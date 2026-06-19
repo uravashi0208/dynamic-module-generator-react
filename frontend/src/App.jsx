@@ -18,8 +18,10 @@ import ModuleDetailPage from './pages/ModuleDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 
-// Dynamic module page registry — auto-updated by backend on module create/delete
-import moduleRegistry from './pages/modules/_registry';
+// Generic dynamic data pages — work for ANY module without code generation
+// These read module definition from moduleStore and render dynamically
+import ModuleDataPage from './pages/ModuleDataPage';
+import ModuleDataFormPage from './pages/ModuleDataFormPage';
 
 const App = () => {
   return (
@@ -54,31 +56,28 @@ const App = () => {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
 
-            {/* Core app pages */}
-            <Route path="/dashboard"       element={<DashboardPage />} />
-            <Route path="/modules"         element={<ModulesPage />} />
-            <Route path="/modules/new"     element={<ModuleFormPage />} />
-            <Route path="/modules/:id"     element={<ModuleDetailPage />} />
+            {/* Core pages */}
+            <Route path="/dashboard"        element={<DashboardPage />} />
+            <Route path="/modules"          element={<ModulesPage />} />
+            <Route path="/modules/new"      element={<ModuleFormPage />} />
+            <Route path="/modules/:id"      element={<ModuleDetailPage />} />
             <Route path="/modules/:id/edit" element={<ModuleFormPage />} />
-            <Route path="/profile"         element={<ProfilePage />} />
+            <Route path="/profile"          element={<ProfilePage />} />
 
             {/*
-              ── Dynamic module data routes ─────────────────────────────────
-              Each module gets 3 clean routes (no /data/ prefix):
-                /:slug          → ListPage  (records table)
-                /:slug/new      → FormPage  (create)
-                /:slug/:id/edit → FormPage  (edit)
+              ── Dynamic module data routes ──────────────────────────────
+              Single wildcard handles ALL modules — no registry needed.
+              Module create thay atle TARAT route work kare — no build needed.
 
-              These are generated from _registry.js which the backend
-              updates automatically whenever a module is created/deleted.
+              /:moduleSlug          → list page  (records table)
+              /:moduleSlug/new      → create form
+              /:moduleSlug/:id/edit → edit form
             */}
-            {moduleRegistry.map(({ slug, ListPage, FormPage }) => (
-              <Route key={slug} path={`/${slug}`}>
-                <Route index                  element={<ListPage />} />
-                <Route path="new"             element={<FormPage />} />
-                <Route path=":id/edit"        element={<FormPage />} />
-              </Route>
-            ))}
+            <Route path="/:moduleSlug">
+              <Route index           element={<ModuleDataPage />} />
+              <Route path="new"      element={<ModuleDataFormPage />} />
+              <Route path=":id/edit" element={<ModuleDataFormPage />} />
+            </Route>
 
           </Route>
         </Route>
