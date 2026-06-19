@@ -191,43 +191,42 @@ const DIRS = {
 };
 
 const writeModuleFiles = (moduleName, moduleSlug, fields) => {
-  const ModelName = toPascalCase(moduleName);
-
-  fs.writeFileSync(
-    path.join(DIRS.models,      `${ModelName}.js`),
-    makeModelContent(moduleName, moduleSlug, fields)
-  );
-  fs.writeFileSync(
-    path.join(DIRS.controllers, `${ModelName}Controller.js`),
-    makeControllerContent(moduleName, moduleSlug)
-  );
-  fs.writeFileSync(
-    path.join(DIRS.routes,      `${ModelName}Routes.js`),
-    makeRoutesContent(moduleName, moduleSlug)
-  );
-
-  logger.info(`📁 Files written: ${ModelName}.js | ${ModelName}Controller.js | ${ModelName}Routes.js`);
+  // In production, dynamicDataRouter handles all module routes — no files needed
+  if (process.env.NODE_ENV === 'production') {
+    logger.info(`[writeModuleFiles] Skipped in production for: ${moduleName}`);
+    return;
+  }
+  try {
+    const ModelName = toPascalCase(moduleName);
+    fs.writeFileSync(path.join(DIRS.models,      `${ModelName}.js`),           makeModelContent(moduleName, moduleSlug, fields));
+    fs.writeFileSync(path.join(DIRS.controllers, `${ModelName}Controller.js`), makeControllerContent(moduleName, moduleSlug));
+    fs.writeFileSync(path.join(DIRS.routes,      `${ModelName}Routes.js`),     makeRoutesContent(moduleName, moduleSlug));
+    logger.info(`Files written: ${ModelName}.js | Controller | Routes`);
+  } catch (e) {
+    logger.warn(`[writeModuleFiles] Failed (non-fatal): ${e.message}`);
+  }
 };
 
 const deleteModuleFiles = (moduleName) => {
-  const ModelName = toPascalCase(moduleName);
-  const slug = moduleName.toLowerCase();
-
-  // Delete direct files
-  [
-    path.join(DIRS.models,      `${ModelName}.js`),
-    path.join(DIRS.controllers, `${ModelName}Controller.js`),
-    path.join(DIRS.routes,      `${ModelName}Routes.js`),
-  ].forEach((p) => { if (fs.existsSync(p)) fs.unlinkSync(p); });
-
-  // Also clean up any legacy generated/ subfolder files (old format)
-  [
-    path.join(DIRS.models,      'generated', `${slug}.model.js`),
-    path.join(DIRS.controllers, 'generated', `${slug}.controller.js`),
-    path.join(DIRS.routes,      'generated', `${slug}.routes.js`),
-  ].forEach((p) => { if (fs.existsSync(p)) fs.unlinkSync(p); });
-
-  logger.info(`🗑️  Files deleted for module: ${moduleName}`);
+  if (process.env.NODE_ENV === 'production') {
+    logger.info(`[deleteModuleFiles] Skipped in production for: ${moduleName}`);
+    return;
+  }
+  try {
+    const ModelName = toPascalCase(moduleName);
+    const slug = moduleName.toLowerCase();
+    [
+      path.join(DIRS.models,      `${ModelName}.js`),
+      path.join(DIRS.controllers, `${ModelName}Controller.js`),
+      path.join(DIRS.routes,      `${ModelName}Routes.js`),
+      path.join(DIRS.models,      'generated', `${slug}.model.js`),
+      path.join(DIRS.controllers, 'generated', `${slug}.controller.js`),
+      path.join(DIRS.routes,      'generated', `${slug}.routes.js`),
+    ].forEach((p) => { try { if (fs.existsSync(p)) fs.unlinkSync(p); } catch(_) {} });
+    logger.info(`Files deleted for module: ${moduleName}`);
+  } catch (e) {
+    logger.warn(`[deleteModuleFiles] Failed (non-fatal): ${e.message}`);
+  }
 };
 
 // ─── Re-register mongoose model at runtime (no restart needed) ────────────────

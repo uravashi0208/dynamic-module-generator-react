@@ -551,29 +551,34 @@ export default registry;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 const generateModulePages = (moduleName, moduleSlug, fields) => {
-  const pagesDir = findFePagesDir();
-  if (!pagesDir) {
-    console.warn('[feFileGenerator] FE pages/modules dir not found — skipping.');
-    return;
+  // Production: skip file generation — ModuleDataPage (generic) handles all modules
+  if (process.env.NODE_ENV === 'production') return;
+  try {
+    const pagesDir = findFePagesDir();
+    if (!pagesDir) { console.warn('[feFileGenerator] FE dir not found — skipping.'); return; }
+    const Pascal = toPascal(moduleName);
+    fs.writeFileSync(path.join(pagesDir, `${Pascal}ListPage.jsx`), makeListPage(moduleName, moduleSlug, fields), 'utf8');
+    fs.writeFileSync(path.join(pagesDir, `${Pascal}FormPage.jsx`), makeFormPage(moduleName, moduleSlug, fields), 'utf8');
+    updateRegistry(pagesDir);
+    console.log(`[feFileGenerator] Generated ${Pascal}ListPage + ${Pascal}FormPage`);
+  } catch (e) {
+    console.warn('[feFileGenerator] generateModulePages failed (non-fatal):', e.message);
   }
-  const Pascal = toPascal(moduleName);
-  fs.writeFileSync(path.join(pagesDir, `${Pascal}ListPage.jsx`), makeListPage(moduleName, moduleSlug, fields), 'utf8');
-  fs.writeFileSync(path.join(pagesDir, `${Pascal}FormPage.jsx`), makeFormPage(moduleName, moduleSlug, fields), 'utf8');
-  updateRegistry(pagesDir);
-  console.log(`[feFileGenerator] Generated ${Pascal}ListPage + ${Pascal}FormPage`);
-  // In production: rebuild FE so new pages go live immediately
-  rebuildFrontend();
 };
 
 const deleteModulePages = (moduleName) => {
-  const pagesDir = findFePagesDir();
-  if (!pagesDir) return;
-  const Pascal = toPascal(moduleName);
-  [path.join(pagesDir, `${Pascal}ListPage.jsx`), path.join(pagesDir, `${Pascal}FormPage.jsx`)]
-    .forEach(p => { if (fs.existsSync(p)) fs.unlinkSync(p); });
-  updateRegistry(pagesDir);
-  console.log(`[feFileGenerator] Deleted ${Pascal}ListPage + ${Pascal}FormPage`);
-  rebuildFrontend();
+  if (process.env.NODE_ENV === 'production') return;
+  try {
+    const pagesDir = findFePagesDir();
+    if (!pagesDir) return;
+    const Pascal = toPascal(moduleName);
+    [path.join(pagesDir, `${Pascal}ListPage.jsx`), path.join(pagesDir, `${Pascal}FormPage.jsx`)]
+      .forEach(p => { try { if (fs.existsSync(p)) fs.unlinkSync(p); } catch(_) {} });
+    updateRegistry(pagesDir);
+    console.log(`[feFileGenerator] Deleted ${Pascal}ListPage + ${Pascal}FormPage`);
+  } catch (e) {
+    console.warn('[feFileGenerator] deleteModulePages failed (non-fatal):', e.message);
+  }
 };
 
 module.exports = { generateModulePages, deleteModulePages };
