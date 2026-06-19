@@ -17,10 +17,28 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 const app = express();
 
+// ─── Trust Proxy ──────────────────────────────────────────────────────────────
+// Required for Render/Heroku/Railway — they sit behind a reverse proxy.
+// Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+// and CORS headers may not work correctly.
+app.set('trust proxy', 1);
+
 // ─── Security ─────────────────────────────────────────────────────────────────
 app.use(helmet());
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // In production, also allow same-origin requests (FE served by BE)
+    return callback(null, true);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -31,10 +49,13 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, max: 20,
   message: { success: false, message: 'Too many requests. Try again in 15 minutes.' },
   standardHeaders: true, legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, max: 200,
   message: { success: false, message: 'Too many requests. Try again later.' },
+  standardHeaders: true, legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
 
 // ─── Body Parsing ─────────────────────────────────────────────────────────────
