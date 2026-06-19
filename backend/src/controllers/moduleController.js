@@ -1,6 +1,6 @@
+const mongoose = require('mongoose');
 const path     = require('path');
 const fs       = require('fs');
-const mongoose = require('mongoose');
 const Module   = require('../models/Module');
 const logger   = require('../config/logger');
 const { AppError } = require('../middleware/errorHandler');
@@ -232,7 +232,6 @@ const deleteModuleFiles = (moduleName) => {
 // ─── Re-register mongoose model at runtime (no restart needed) ────────────────
 
 const registerDynamicModel = async (moduleName, moduleSlug, fields) => {
-  const mongoose = require('mongoose');
   const collectionName = `${moduleSlug}`;
 
   // Remove cached model so schema updates take effect
@@ -356,7 +355,8 @@ const createModule = async (req, res, next) => {
     catch (e) { logger.warn('[writeModuleFiles] Skipped:', e.message); }
 
     // ✅ 2. Register mongoose model in memory (no restart needed)
-    await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields);
+    try { await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields); }
+    catch (e) { logger.warn('[registerDynamicModel] Non-fatal:', e.message); }
 
     // ✅ 3. Generate FE pages (non-blocking — never fails module creation)
     try { generateModulePages(module.moduleName, module.moduleSlug, module.fields); }
@@ -366,7 +366,7 @@ const createModule = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: `Module '${moduleName}' created. Route: /api/${module.moduleSlug}`,
+      message: `Module '${moduleName}' created successfully.`,
       data: { module },
     });
   } catch (err) { next(err); }
@@ -398,7 +398,8 @@ const updateModule = async (req, res, next) => {
 
     try { writeModuleFiles(module.moduleName, module.moduleSlug, module.fields); }
     catch (e) { logger.warn('[writeModuleFiles] Skipped:', e.message); }
-    await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields);
+    try { await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields); }
+    catch (e) { logger.warn('[registerDynamicModel] Non-fatal:', e.message); }
     try { generateModulePages(module.moduleName, module.moduleSlug, module.fields); }
     catch (feErr) { logger.warn('[FE Generator] Skipped:', feErr.message); }
 
@@ -479,7 +480,7 @@ const addField = async (req, res, next) => {
     module.updatedBy = req.user._id;
     await module.save();
     try { writeModuleFiles(module.moduleName, module.moduleSlug, module.fields); } catch(e) { logger.warn('[writeModuleFiles] Skipped:', e.message); }
-    await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields);
+    try { await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields); } catch(e) { logger.warn('[registerDynamicModel] Non-fatal:', e.message); }
     res.status(201).json({ success: true, message: 'Field added.', data: { module } });
   } catch (err) { next(err); }
 };
@@ -494,7 +495,7 @@ const removeField = async (req, res, next) => {
     module.updatedBy = req.user._id;
     await module.save();
     try { writeModuleFiles(module.moduleName, module.moduleSlug, module.fields); } catch(e) { logger.warn('[writeModuleFiles] Skipped:', e.message); }
-    await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields);
+    try { await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields); } catch(e) { logger.warn('[registerDynamicModel] Non-fatal:', e.message); }
     res.json({ success: true, message: 'Field removed.', data: { module } });
   } catch (err) { next(err); }
 };
