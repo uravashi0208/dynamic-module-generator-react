@@ -1,18 +1,29 @@
 /**
  * feFileGenerator.js
- * Generates FE pages when a module is created/updated/deleted.
  *
- * Outputs:
- *   fe/src/pages/modules/{Pascal}ListPage.jsx
- *   fe/src/pages/modules/{Pascal}FormPage.jsx
- *   fe/src/pages/modules/_registry.js  (auto-updated)
+ * Generates FE JSX page files when a module is created/updated/deleted.
+ * Works in BOTH local development and production (Render persistent disk).
+ *
+ * Path resolution order:
+ *   1. FE_SRC_DIR env variable (set by Render with persistent disk path)
+ *   2. Sibling fe/ or frontend/ folder (local development)
  */
 
-const fs   = require('fs');
-const path = require('path');
+const fs     = require('fs');
+const path   = require('path');
 
-// ── Find the FE pages/modules directory ──────────────────────────────────────
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+// Path to fe/src/pages/modules — resolved from env or filesystem
 const findFePagesDir = () => {
+  // 1. Production: use env variable (Render persistent disk)
+  if (process.env.FE_SRC_DIR) {
+    const dir = path.join(process.env.FE_SRC_DIR, 'pages', 'modules');
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  }
+
+  // 2. Local: walk up from __dirname to find fe/frontend sibling
   const candidates = [
     path.join(__dirname, '..', '..', '..', 'frontend', 'src', 'pages', 'modules'),
     path.join(__dirname, '..', '..', '..', 'fe',       'src', 'pages', 'modules'),
@@ -20,7 +31,7 @@ const findFePagesDir = () => {
     path.join(__dirname, '..', '..', 'frontend',       'src', 'pages', 'modules'),
   ];
   for (const c of candidates) {
-    const parent = path.dirname(c); // pages/
+    const parent = path.dirname(c);
     if (fs.existsSync(parent)) {
       fs.mkdirSync(c, { recursive: true });
       return c;
@@ -29,11 +40,15 @@ const findFePagesDir = () => {
   return null;
 };
 
+// rebuildFrontend — no-op in production (generic ModuleDataPage handles all modules)
+// FE file generation is for local dev only — static files committed to git
+const rebuildFrontend = () => {};
+
 const toPascal = (str) =>
   str.replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ''))
      .replace(/^(.)/, (c) => c.toUpperCase());
 
-// ── List Page ─────────────────────────────────────────────────────────────────
+// ── List Page template ────────────────────────────────────────────────────────
 const makeListPage = (moduleName, moduleSlug, fields) => {
   const Pascal = toPascal(moduleName);
 
@@ -60,7 +75,6 @@ const makeListPage = (moduleName, moduleSlug, fields) => {
   return `/**
  * ${Pascal}ListPage.jsx  —  AUTO-GENERATED (${new Date().toISOString()})
  * Module: ${moduleName}  |  Slug: ${moduleSlug}
- *
  * Safe to edit — regenerated only when module is deleted + recreated.
  */
 import { useEffect, useState, useRef } from 'react';
@@ -110,9 +124,8 @@ const CellValue = ({ value, fieldType }) => {
   return <span className="text-sm text-slate-700">{String(value)}</span>;
 };
 
-// ── Action menu — smart upward/downward positioning ──────────────────────────
 const ActionMenu = ({ onEdit, onDelete }) => {
-  const [open, setOpen]   = useState(false);
+  const [open, setOpen]     = useState(false);
   const [dropUp, setDropUp] = useState(false);
   const ref    = useRef(null);
   const btnRef = useRef(null);
@@ -161,12 +174,12 @@ const ActionMenu = ({ onEdit, onDelete }) => {
 const ${Pascal}ListPage = () => {
   const navigate = useNavigate();
   const { records, pagination, isLoading, fetchRecords, deleteRecord } = useModuleDataStore();
-  const [page, setPage]   = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [page, setPage]     = useState(1);
+  const [limit, setLimit]   = useState(10);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState([]);
   const [sortField, setSortField] = useState(null);
-  const [sortDir, setSortDir] = useState('asc');
+  const [sortDir, setSortDir]     = useState('asc');
 
   useEffect(() => { setSelected([]); fetchRecords(MODULE_SLUG, page, limit); }, [page, limit]);
 
@@ -200,7 +213,6 @@ const ${Pascal}ListPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Client-side filter + sort
   let displayed = search.trim()
     ? records.filter((r) => Object.values(r).some((v) => String(v ?? '').toLowerCase().includes(search.toLowerCase())))
     : [...records];
@@ -216,23 +228,18 @@ const ${Pascal}ListPage = () => {
   const perPage    = pagination?.limit || limit;
   const totalPages = Math.ceil(total / perPage);
   const allSelected = displayed.length > 0 && selected.length === displayed.length;
-
-  const toggleAll = () => setSelected(allSelected ? [] : displayed.map(r => r._id));
-  const toggleOne = (id) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
-
-  const pageStart = ((page - 1) * perPage) + 1;
-  const pageEnd   = Math.min(page * perPage, total);
+  const toggleAll  = () => setSelected(allSelected ? [] : displayed.map(r => r._id));
+  const toggleOne  = (id) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  const pageStart  = ((page - 1) * perPage) + 1;
+  const pageEnd    = Math.min(page * perPage, total);
 
   return (
     <div className="space-y-5">
-
-      {/* ── Header ─────────────────────────────────────────────────── */}
       <div>
         <h1 className="text-xl font-bold text-slate-900">{MODULE_NAME} List</h1>
         <p className="text-sm text-slate-500 mt-0.5">Manage and track all {MODULE_NAME.toLowerCase()} records.</p>
       </div>
 
-      {/* ── Card ───────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
         {/* Card header */}
@@ -259,17 +266,13 @@ const ${Pascal}ListPage = () => {
           </div>
         </div>
 
-        {/* Search + Filter bar */}
+        {/* Search + Filter */}
         <div className="flex items-center justify-between gap-3 px-6 py-3 border-b border-slate-100">
           <div className="relative max-w-xs w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={search}
+            <input type="text" placeholder="Search..." value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
-            />
+              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors" />
           </div>
           <button className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
             <SlidersHorizontal className="w-4 h-4" /> Filter
@@ -307,7 +310,7 @@ ${colHeaders}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {displayed.map((record, idx) => (
+                {displayed.map((record) => (
                   <tr key={record._id}
                     className={clsx('transition-colors hover:bg-slate-50/80 group', selected.includes(record._id) && 'bg-indigo-50/40')}>
                     <td className="px-4 py-4">
@@ -320,7 +323,6 @@ ${colCells}
                     </td>
                     <td className="px-4 py-4">
                       <ActionMenu
-                        record={record}
                         onEdit={() => navigate('/${moduleSlug}/' + record._id + '/edit')}
                         onDelete={() => handleDelete(record._id, record.${firstField})}
                       />
@@ -332,31 +334,21 @@ ${colCells}
           </div>
         )}
 
-        {/* ── Pagination ───────────────────────────────────────────── */}
+        {/* Pagination */}
         {total > 0 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 flex-wrap gap-3">
-            {/* Left: count + per-page selector */}
             <div className="flex items-center gap-3">
-              <p className="text-sm text-slate-500">
-                Showing {pageStart} to {pageEnd} of {total}
-              </p>
-              <select
-                value={limit}
-                onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-                className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 cursor-pointer"
-              >
+              <p className="text-sm text-slate-500">Showing {pageStart} to {pageEnd} of {total}</p>
+              <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 cursor-pointer">
                 {[5, 10, 15, 20].map((n) => (
                   <option key={n} value={n}>{n} / page</option>
                 ))}
               </select>
             </div>
-            {/* Right: page buttons */}
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 <ChevronLeft className="w-4 h-4" />
               </button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -364,18 +356,13 @@ ${colCells}
                 return (
                   <button key={pg} onClick={() => setPage(pg)}
                     className={clsx('w-8 h-8 text-sm rounded-lg font-medium transition-colors',
-                      pg === page
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50')}>
+                      pg === page ? 'bg-indigo-600 text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-slate-50')}>
                     {pg}
                   </button>
                 );
               })}
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -390,6 +377,7 @@ export default ${Pascal}ListPage;
 `;
 };
 
+// ── Form Page (unchanged) ─────────────────────────────────────────────────────
 const makeFormPage = (moduleName, moduleSlug, fields) => {
   const Pascal = toPascal(moduleName);
 
@@ -436,9 +424,7 @@ const makeFormPage = (moduleName, moduleSlug, fields) => {
   return `/**
  * ${Pascal}FormPage.jsx  —  AUTO-GENERATED (${new Date().toISOString()})
  * Module: ${moduleName}  |  Slug: ${moduleSlug}
- *
  * Safe to edit — regenerated only when module is deleted + recreated.
- * Add dependent fields, custom validation, file upload logic freely.
  */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -483,8 +469,6 @@ const ${Pascal}FormPage = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 animate-slide-up">
-
-      {/* Header */}
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/${moduleSlug}')} className="btn-ghost">
           <ArrowLeft className="w-4 h-4" />
@@ -500,13 +484,11 @@ const ${Pascal}FormPage = () => {
         </div>
       </div>
 
-      {/* Form */}
       <div className="card p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 ${fieldBlocks}
           </div>
-
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
             <button type="button" onClick={() => navigate('/${moduleSlug}')} className="btn-secondary" disabled={isSubmitting}>
               Cancel
@@ -536,7 +518,6 @@ const updateRegistry = (pagesDir) => {
     .filter(f => f.endsWith('ListPage.jsx'))
     .map(f => {
       const Pascal = f.replace('ListPage.jsx', '');
-      // PascalCase → kebab-slug: MyModule → my-module, Test1 → test1
       const slug = Pascal
         .replace(/([A-Z])/g, (c, offset) => (offset === 0 ? c.toLowerCase() : `-${c.toLowerCase()}`))
         .replace(/^-+/, '');
@@ -551,11 +532,10 @@ const updateRegistry = (pagesDir) => {
     `  { slug: '${m.slug}', ListPage: ${m.Pascal}ListPage, FormPage: ${m.Pascal}FormPage },`
   ).join('\n');
 
-  const content =
+  fs.writeFileSync(registryPath,
 `/**
- * _registry.js  —  AUTO-MANAGED by backend on every module create/delete.
+ * _registry.js — AUTO-MANAGED by backend on every module create/delete.
  * DO NOT remove the [MODULES_START] / [MODULES_END] markers.
- * You can add custom entries below the generated block.
  */
 
 // [MODULES_START]
@@ -566,9 +546,7 @@ const registry = [
 ${entries}
 ];
 export default registry;
-`;
-
-  fs.writeFileSync(registryPath, content, 'utf8');
+`, 'utf8');
 };
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -583,6 +561,8 @@ const generateModulePages = (moduleName, moduleSlug, fields) => {
   fs.writeFileSync(path.join(pagesDir, `${Pascal}FormPage.jsx`), makeFormPage(moduleName, moduleSlug, fields), 'utf8');
   updateRegistry(pagesDir);
   console.log(`[feFileGenerator] Generated ${Pascal}ListPage + ${Pascal}FormPage`);
+  // In production: rebuild FE so new pages go live immediately
+  rebuildFrontend();
 };
 
 const deleteModulePages = (moduleName) => {
@@ -593,6 +573,7 @@ const deleteModulePages = (moduleName) => {
     .forEach(p => { if (fs.existsSync(p)) fs.unlinkSync(p); });
   updateRegistry(pagesDir);
   console.log(`[feFileGenerator] Deleted ${Pascal}ListPage + ${Pascal}FormPage`);
+  rebuildFrontend();
 };
 
 module.exports = { generateModulePages, deleteModulePages };

@@ -352,14 +352,16 @@ const createModule = async (req, res, next) => {
     });
     await module.populate('createdBy', 'name email');
 
-    // ✅ 1. Write BE Model / Controller / Routes files
-    writeModuleFiles(module.moduleName, module.moduleSlug, module.fields);
+    // ✅ 1. Write BE files (local dev only — skipped gracefully in production)
+    try { writeModuleFiles(module.moduleName, module.moduleSlug, module.fields); }
+    catch (e) { logger.warn('[writeModuleFiles] Skipped:', e.message); }
 
     // ✅ 2. Register mongoose model in memory (no restart needed)
     await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields);
 
-    // ✅ 3. Generate FE pages (ListPage + FormPage + update _registry.js)
-    generateModulePages(module.moduleName, module.moduleSlug, module.fields);
+    // ✅ 3. Generate FE pages (non-blocking — never fails module creation)
+    try { generateModulePages(module.moduleName, module.moduleSlug, module.fields); }
+    catch (feErr) { logger.warn('[FE Generator] Skipped:', feErr.message); }
 
     logger.info(`Module created: ${moduleName} by ${req.user.email}`);
 
@@ -395,9 +397,11 @@ const updateModule = async (req, res, next) => {
       deleteModuleFiles(oldName);
     }
 
-    writeModuleFiles(module.moduleName, module.moduleSlug, module.fields);
+    try { writeModuleFiles(module.moduleName, module.moduleSlug, module.fields); }
+    catch (e) { logger.warn('[writeModuleFiles] Skipped:', e.message); }
     await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields);
-    generateModulePages(module.moduleName, module.moduleSlug, module.fields);
+    try { generateModulePages(module.moduleName, module.moduleSlug, module.fields); }
+    catch (feErr) { logger.warn('[FE Generator] Skipped:', feErr.message); }
 
     res.json({
       success: true,
@@ -418,8 +422,9 @@ const deleteModule = async (req, res, next) => {
 
     // 1. Delete generated BE files (Model, Controller, Routes)
     //    AND FE pages (ListPage, FormPage, update _registry.js)
-    deleteModuleFiles(moduleName);
-    deleteModulePages(moduleName);
+    try { deleteModuleFiles(moduleName); } catch(e) { logger.warn('[deleteModuleFiles] Skipped:', e.message); }
+    try { deleteModulePages(moduleName); }
+    catch (feErr) { logger.warn('[FE Generator] Delete skipped:', feErr.message); }
 
     // 2. Remove mongoose model from registry
     if (mongoose.models[collectionName]) {
@@ -474,7 +479,7 @@ const addField = async (req, res, next) => {
     module.fields.push(req.body);
     module.updatedBy = req.user._id;
     await module.save();
-    writeModuleFiles(module.moduleName, module.moduleSlug, module.fields);
+    try { writeModuleFiles(module.moduleName, module.moduleSlug, module.fields); } catch(e) { logger.warn('[writeModuleFiles] Skipped:', e.message); }
     await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields);
     res.status(201).json({ success: true, message: 'Field added.', data: { module } });
   } catch (err) { next(err); }
@@ -489,7 +494,7 @@ const removeField = async (req, res, next) => {
     module.fields.splice(idx, 1);
     module.updatedBy = req.user._id;
     await module.save();
-    writeModuleFiles(module.moduleName, module.moduleSlug, module.fields);
+    try { writeModuleFiles(module.moduleName, module.moduleSlug, module.fields); } catch(e) { logger.warn('[writeModuleFiles] Skipped:', e.message); }
     await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields);
     res.json({ success: true, message: 'Field removed.', data: { module } });
   } catch (err) { next(err); }
