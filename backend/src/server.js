@@ -20,7 +20,7 @@ const app = express();
 // ─── Security ─────────────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000 || https://dynamic-module-generator-react-1.onrender.com',
+  origin: process.env.CLIENT_URL || 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -60,23 +60,29 @@ app.use('/api/modules', apiLimiter,  moduleRoutes);
 // All module CRUD is handled here without any per-module route files.
 app.use('/api', apiLimiter, dynamicDataRouter);
 
-// ─── Serve FE Static Files (production) ──────────────────────────────────────
-if (process.env.NODE_ENV === 'production') {
-  const feDistDir = process.env.FE_DIST_DIR
-    || path.join(__dirname, '..', '..', 'fe', 'dist')
-    || path.join(__dirname, '..', '..', 'frontend', 'dist');
+// ─── Serve FE Static Files ────────────────────────────────────────────────────
+// Check env var first, then common relative paths
+const possibleDistDirs = [
+  process.env.FE_DIST_DIR,
+  path.join(__dirname, '..', '..', 'fe', 'dist'),
+  path.join(__dirname, '..', '..', 'frontend', 'dist'),
+  path.join(__dirname, '..', 'public'),
+].filter(Boolean);
 
-  if (fs.existsSync(feDistDir)) {
-    app.use(express.static(feDistDir));
-    // SPA fallback — all non-API routes serve index.html
-    app.get('*', (req, res, next) => {
-      if (req.path.startsWith('/api')) return next();
-      res.sendFile(path.join(feDistDir, 'index.html'));
-    });
-    logger.info(`🌐 Serving FE from: ${feDistDir}`);
-  } else {
-    logger.warn(`⚠️  FE dist not found at: ${feDistDir}`);
-  }
+const feDistDir = possibleDistDirs.find((d) => fs.existsSync(d));
+
+if (feDistDir) {
+  app.use(express.static(feDistDir));
+  // SPA fallback — non-API GET requests serve index.html so React Router works on refresh
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ success: false, message: 'Not found' });
+    }
+    res.sendFile(path.join(feDistDir, 'index.html'));
+  });
+  logger.info('Serving FE dist from: ' + feDistDir);
+} else {
+  logger.warn('FE dist directory not found - API only mode');
 }
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
