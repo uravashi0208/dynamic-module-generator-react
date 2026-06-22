@@ -339,37 +339,66 @@ const getModule = async (req, res, next) => {
 };
 
 const createModule = async (req, res, next) => {
+  // Step-by-step with full isolation — no single step can crash the response
+  let module = null;
   try {
     const { moduleName, description, icon, fields } = req.body;
 
-    const module = await Module.create({
-      moduleName, description, icon,
+    // Validate required fields
+    if (!moduleName || !moduleName.trim()) {
+      return res.status(400).json({ success: false, message: 'Module name is required.' });
+    }
+
+    // Step 1 — Save to MongoDB
+    logger.info(`[createModule] Step 1: Creating module "${moduleName}"`);
+    module = await Module.create({
+      moduleName: moduleName.trim(),
+      description: description || '',
+      icon: icon || 'cube',
       fields: fields || [],
       createdBy: req.user._id,
       updatedBy:  req.user._id,
     });
-    await module.populate('createdBy', 'name email');
+    logger.info(`[createModule] Step 1 OK: ${module._id}`);
 
-    // ✅ 1. Write BE files (local dev only — skipped gracefully in production)
+    // Step 2 — Populate (non-fatal)
+    try { await module.populate('createdBy', 'name email'); }
+    catch (e) { logger.warn('[createModule] populate failed (non-fatal):', e.message); }
+
+    // Step 3 — Write BE files (local dev only)
     try { writeModuleFiles(module.moduleName, module.moduleSlug, module.fields); }
-    catch (e) { logger.warn('[writeModuleFiles] Skipped:', e.message); }
+    catch (e) { logger.warn('[createModule] writeModuleFiles skipped:', e.message); }
 
-    // ✅ 2. Register mongoose model in memory (no restart needed)
+    // Step 4 — Register Mongoose model in memory
     try { await registerDynamicModel(module.moduleName, module.moduleSlug, module.fields); }
-    catch (e) { logger.warn('[registerDynamicModel] Non-fatal:', e.message); }
+    catch (e) { logger.warn('[createModule] registerDynamicModel skipped:', e.message); }
 
-    // ✅ 3. Generate FE pages (non-blocking — never fails module creation)
+    // Step 5 — Generate FE pages (local dev only)
     try { generateModulePages(module.moduleName, module.moduleSlug, module.fields); }
-    catch (feErr) { logger.warn('[FE Generator] Skipped:', feErr.message); }
+    catch (e) { logger.warn('[createModule] generateModulePages skipped:', e.message); }
 
-    logger.info(`Module created: ${moduleName} by ${req.user.email}`);
+    logger.info(`[createModule] DONE: "${moduleName}" slug=${module.moduleSlug}`);
 
-    res.status(201).json({
+    // Always respond with success if module was saved
+    return res.status(201).json({
       success: true,
-      message: `Module '${moduleName}' created successfully.`,
+      message: `Module '${module.moduleName}' created successfully.`,
       data: { module },
     });
-  } catch (err) { next(err); }
+
+  } catch (err) {
+    logger.error('[createModule] FATAL error:', err.message, err.stack);
+    // If module was saved but something after failed — still return success
+    if (module && module._id) {
+      logger.warn('[createModule] Module saved but post-processing failed — returning success');
+      return res.status(201).json({
+        success: true,
+        message: `Module '${module.moduleName}' created successfully.`,
+        data: { module },
+      });
+    }
+    return next(err);
+  }
 };
 
 const updateModule = async (req, res, next) => {
