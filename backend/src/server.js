@@ -9,6 +9,7 @@ const morgan    = require('morgan');
 const rateLimit = require('express-rate-limit');
 
 const connectDB         = require('./config/database');
+const ensureIndexes     = require('./config/ensureIndexes');
 const logger            = require('./config/logger');
 const authRoutes        = require('./routes/authRoutes');
 const moduleRoutes      = require('./routes/moduleRoutes');
@@ -107,6 +108,7 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   await connectDB();
+  await ensureIndexes(require('mongoose'));
 
   // On startup: pre-register all active module Mongoose models so the first
   // request to any module is instant (no on-demand build delay).
@@ -165,8 +167,16 @@ const startServer = async () => {
   });
 };
 
-process.on('unhandledRejection', (err) => { logger.error(err); process.exit(1); });
-process.on('uncaughtException',  (err) => { logger.error(err); process.exit(1); });
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('UnhandledRejection at:', promise, 'reason:', reason);
+  // Don't exit — log and continue so server stays alive
+});
+process.on('uncaughtException', (err) => {
+  logger.error('UncaughtException:', err.message, err.stack);
+  // Don't exit on non-fatal errors
+  if (err.code === 'ECONNRESET' || err.code === 'EPIPE') return;
+  process.exit(1);
+});
 
 startServer();
 module.exports = app;

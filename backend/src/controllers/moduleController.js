@@ -286,7 +286,11 @@ const getModules = async (req, res, next) => {
     } = req.query;
 
     const filter = {};
-    if (search)            filter.$text   = { $search: search };
+    if (search) {
+      // Use regex instead of $text to avoid requiring a text index
+      const regex = { $regex: search, $options: 'i' };
+      filter.$or = [{ moduleName: regex }, { description: regex }];
+    }
     if (isActive !== undefined) filter.isActive = isActive === 'true';
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -305,7 +309,10 @@ const getModules = async (req, res, next) => {
     const modulesWithCount = await Promise.all(
       modules.map(async (mod) => {
         try {
-          if (!db) return { ...mod, recordCount: 0 };
+          if (!db || !mod.moduleSlug) return { ...mod, recordCount: 0 };
+          // Check collection exists before counting
+          const cols = await db.listCollections({ name: mod.moduleSlug }).toArray();
+          if (!cols.length) return { ...mod, recordCount: 0 };
           const count = await db.collection(mod.moduleSlug).countDocuments();
           return { ...mod, recordCount: count };
         } catch (_) {
