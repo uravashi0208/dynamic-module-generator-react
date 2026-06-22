@@ -27,58 +27,50 @@ const SKIP_SLUGS = new Set(['auth', 'modules']);
 const resolveModel = async (moduleSlug) => {
   if (SKIP_SLUGS.has(moduleSlug)) return null;
 
-  // 1. Already registered (e.g. by a legacy generated model file) → reuse
-  if (mongoose.models[moduleSlug]) {
-    return mongoose.models[moduleSlug];
-  }
-
-  // 2. Look up module in DB
-  const mod = await Module.findOne({
-    $or: [
-      { moduleSlug },
-      { moduleName: new RegExp(`^${moduleSlug}$`, 'i') },
-    ],
-    isActive: true,
-  }).lean();
-
-  if (!mod) return null;
-
-  // 3. Build schema from field definitions
-  const schemaFields = {};
-  (mod.fields || []).forEach((f) => {
-    let type = String;
-    if (['number', 'range'].includes(f.fieldType))              type = Number;
-    else if (f.fieldType === 'checkbox')                        type = Boolean;
-    else if (['date', 'datetime-local'].includes(f.fieldType))  type = Date;
-
-    schemaFields[f.fieldName] = {
-      type,
-      required: f.validations?.required || false,
-      ...(f.defaultValue !== undefined && f.defaultValue !== ''
-        ? { default: f.defaultValue } : {}),
-    };
-  });
-  schemaFields._createdBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };
-  schemaFields._updatedBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };
-
-  const collectionName = mod.moduleSlug; // canonical slug from DB
-  const schema = new mongoose.Schema(schemaFields, { timestamps: true });
-  const Model  = mongoose.model(collectionName, schema, collectionName);
-
-  // Ensure physical collection exists
   try {
-    const db   = mongoose.connection.db;
-    const cols = await db.listCollections({ name: collectionName }).toArray();
-    if (cols.length === 0) {
-      await db.createCollection(collectionName);
-      logger.info(`🗄️  Auto-created collection: ${collectionName}`);
-    }
-  } catch (e) {
-    logger.warn(`Collection init (${collectionName}):`, e.message);
-  }
+    // 1. Already cached
+    if (mongoose.models[moduleSlug]) return mongoose.models[moduleSlug];
 
-  logger.info(`⚡ Resolved model on-demand: ${collectionName}`);
-  return Model;
+    // 2. Look up module in DB
+    let mod = await Module.findOne({ moduleSlug }).lean();
+    if (!mod) mod = await Module.findOne({ moduleName: new RegExp('^' + moduleSlug + '$', 'i') }).lean();
+    if (!mod) return null;
+
+    // 3. Build schema from field definitions
+    const schemaFields = {};
+    (mod.fields || []).forEach((f) => {
+      let type = String;
+      if (['number', 'range'].includes(f.fieldType))             type = Number;
+      else if (f.fieldType === 'checkbox')                       type = Boolean;
+      else if (['date', 'datetime-local'].includes(f.fieldType)) type = Date;
+      schemaFields[f.fieldName] = { type, required: f.validations?.required || false };
+    });
+    schemaFields._createdBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };
+    schemaFields._updatedBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };
+
+    const slug   = mod.moduleSlug;
+    const schema = new mongoose.Schema(schemaFields, { timestamps: true });
+    // Guard against race condition — another request may have registered it already
+    const Model  = mongoose.models[slug] || mongoose.model(slug, schema, slug);
+
+    // Ensure collection exists in MongoDB (non-fatal)
+    try {
+      const db = mongoose.connection.db;
+      if (db) {
+        const cols = await db.listCollections({ name: slug }).toArray();
+        if (!cols.length) await db.createCollection(slug);
+      }
+    } catch (e) {
+      logger.warn('[resolveModel] collection init warning: ' + e.message);
+    }
+
+    logger.info('[resolveModel] resolved: ' + slug);
+    return Model;
+
+  } catch (err) {
+    logger.error('[resolveModel] failed for ' + moduleSlug + ': ' + err.message);
+    return null;
+  }
 };
 
 // ── GET /:moduleSlug — list records ───────────────────────────────────────────

@@ -232,48 +232,47 @@ const deleteModuleFiles = (moduleName) => {
 // ─── Re-register mongoose model at runtime (no restart needed) ────────────────
 
 const registerDynamicModel = async (moduleName, moduleSlug, fields) => {
-  const collectionName = `${moduleSlug}`;
-
-  // Remove cached model so schema updates take effect
-  // Use deleteModel() — compatible with Mongoose 8.x (modelSchemas was removed)
-  if (mongoose.models[collectionName]) mongoose.deleteModel(collectionName);
-
-  const schemaFields = {};
-  fields.forEach((f) => {
-    let type = String;
-    if (['number', 'range'].includes(f.fieldType))             type = Number;
-    else if (f.fieldType === 'checkbox')                       type = Boolean;
-    else if (['date', 'datetime-local'].includes(f.fieldType)) type = Date;
-
-    schemaFields[f.fieldName] = {
-      type,
-      required: f.validations?.required || false,
-      ...(f.defaultValue !== undefined && f.defaultValue !== ''
-        ? { default: f.defaultValue } : {}),
-    };
-  });
-  schemaFields._createdBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };
-  schemaFields._updatedBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };
-
-  const schema = new mongoose.Schema(schemaFields, { timestamps: true });
-  const Model  = mongoose.model(collectionName, schema, collectionName);
-
-  // ✅ Force MongoDB to physically create the collection + indexes RIGHT NOW.
-  // createCollection() is idempotent — safe to call even if it already exists.
-  try {
-    const db = mongoose.connection.db;
-    const collections = await db.listCollections({ name: collectionName }).toArray();
-    if (collections.length === 0) {
-      await db.createCollection(collectionName);
-      logger.info(`🗄️  MongoDB collection created: ${collectionName}`);
-    }
-    await Model.createIndexes();
-  } catch (err) {
-    logger.warn(`Collection init warning for ${collectionName}:`, err.message);
+  // In production, dynamicDataRouter builds models on-demand — skip here
+  // to avoid crashing when mongoose.connection.db is not yet ready
+  if (process.env.NODE_ENV === 'production') {
+    logger.info(`[registerDynamicModel] Skipped in production for: ${moduleSlug}`);
+    return null;
   }
 
-  logger.info(`🔄 Mongoose model registered: ${collectionName}`);
-  return Model;
+  try {
+    const collectionName = moduleSlug;
+    if (mongoose.models[collectionName]) mongoose.deleteModel(collectionName);
+
+    const schemaFields = {};
+    (fields || []).forEach((f) => {
+      let type = String;
+      if (['number', 'range'].includes(f.fieldType))             type = Number;
+      else if (f.fieldType === 'checkbox')                       type = Boolean;
+      else if (['date', 'datetime-local'].includes(f.fieldType)) type = Date;
+      schemaFields[f.fieldName] = {
+        type,
+        required: f.validations?.required || false,
+      };
+    });
+    schemaFields._createdBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };
+    schemaFields._updatedBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };
+
+    const schema = new mongoose.Schema(schemaFields, { timestamps: true });
+    const Model  = mongoose.model(collectionName, schema, collectionName);
+
+    const db = mongoose.connection.db;
+    if (db) {
+      const cols = await db.listCollections({ name: collectionName }).toArray();
+      if (!cols.length) await db.createCollection(collectionName);
+      await Model.createIndexes();
+    }
+
+    logger.info(`[registerDynamicModel] Registered: ${collectionName}`);
+    return Model;
+  } catch (err) {
+    logger.warn(`[registerDynamicModel] Failed (non-fatal): ${err.message}`);
+    return null;
+  }
 };
 
 // ─── CRUD Controllers ──────────────────────────────────────────────────────────
