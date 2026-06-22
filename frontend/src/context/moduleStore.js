@@ -93,7 +93,8 @@ const useModuleStore = create((set, get) => ({
       }
 
       const errors = error.response?.data?.errors;
-      if (!errors) toast.error(message);
+      // Always toast for network errors (no response = BE unreachable)
+      if (!errors || !error.response) toast.error(message);
       return { success: false, error: message, errors };
     }
   },

@@ -87,6 +87,13 @@ api.interceptors.response.use(
       toast.error('Too many requests. Please slow down.');
     }
 
+    // Network error or 5xx — BE is down / unreachable
+    if (!error.response) {
+      toast.error('Cannot reach server. Please check your connection or try again.');
+    } else if (error.response.status >= 500 && error.response.status < 600) {
+      toast.error(`Server error (${error.response.status}). Backend may be starting up — please retry in a moment.`);
+    }
+
     return Promise.reject(error);
   }
 );
