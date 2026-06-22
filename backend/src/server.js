@@ -25,18 +25,10 @@ app.set('trust proxy', 1);
 
 // ─── Security ─────────────────────────────────────────────────────────────────
 app.use(helmet());
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  process.env.CLIENT_URL,
-].filter(Boolean);
-
+// CORS — allow all Render subdomains + localhost
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, Postman)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    // In production, also allow same-origin requests (FE served by BE)
+    // Always allow — BE and FE may be on different Render subdomains
     return callback(null, true);
   },
   credentials: true,

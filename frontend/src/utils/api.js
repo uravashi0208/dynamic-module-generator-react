@@ -1,11 +1,15 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+// Priority:
+// 1. VITE_API_URL env variable (set in Render/Vercel dashboard)
+// 2. /api (same-origin — when FE and BE are on same server)
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
   timeout: 30000,
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -13,9 +17,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
@@ -63,7 +65,6 @@ api.interceptors.response.use(
 
           onRefreshed(accessToken);
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-
           return api(originalRequest);
         } catch (refreshError) {
           localStorage.removeItem('accessToken');
@@ -75,7 +76,6 @@ api.interceptors.response.use(
           isRefreshing = false;
         }
       } else {
-        // Other 401 - redirect to login
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
