@@ -1,7 +1,6 @@
 /**
- * _registry.js  —  AUTO-MANAGED by backend on every module create/delete.
+ * _registry.js — AUTO-MANAGED by backend on every module create/delete.
  * DO NOT remove the [MODULES_START] / [MODULES_END] markers.
- * You can add custom entries below the generated block.
  */
 
 // [MODULES_START]
