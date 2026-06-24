@@ -104,6 +104,61 @@ const ActionMenu = ({ onEdit, onDelete }) => {
   );
 };
 
+// ── Delete confirmation modal ─────────────────────────────────────────────────
+const DeleteModal = ({ label, count, isDeleting, onConfirm, onCancel }) => {
+  const isBulk = count > 1;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={!isDeleting ? onCancel : undefined}
+      />
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col items-center text-center animate-[fadeUp_0.18s_ease]">
+        {/* Trash icon with red bg */}
+        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
+          <Trash2 className="w-7 h-7 text-red-500" />
+        </div>
+
+        <h2 className="text-lg font-bold text-slate-800 mb-1">
+          {isBulk ? `Delete ${count} records?` : 'Delete record?'}
+        </h2>
+        <p className="text-sm text-slate-500 mb-6">
+          {isBulk
+            ? `${count} records will be permanently deleted and cannot be recovered.`
+            : <>
+                {label && <><span className="font-medium text-slate-700">"{label}"</span> </>}
+                will be permanently deleted and cannot be recovered.
+              </>
+          }
+        </p>
+
+        <div className="flex gap-3 w-full">
+          <button
+            onClick={onCancel}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-200
+              rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500
+              hover:bg-red-600 disabled:opacity-80 disabled:cursor-not-allowed rounded-xl
+              transition-colors flex items-center justify-center gap-2">
+            {isDeleting
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Deleting...</>
+              : <><Trash2 className="w-4 h-4" /> Delete</>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Skeleton row ──────────────────────────────────────────────────────────────
 const SkeletonRow = ({ colCount, index }) => (
   <tr className="border-b border-slate-50">
@@ -146,8 +201,13 @@ const ModuleDataPage = () => {
   // stablePagination = last confirmed pagination, so footer never disappears
   const [stableRows, setStableRows]           = useState([]);
   const [stablePagination, setStablePagination] = useState(null);
-  const [stableCount, setStableCount]         = useState(1);
+  const [stableCount, setStableCount]         = useState(10);
   const prevModuleSlug                        = useRef(null);
+
+  // Delete modal state
+  const [deleteModal, setDeleteModal] = useState(null);
+  // deleteModal = { id, label, isBulk, ids } | null
+  const [isDeleting, setIsDeleting]   = useState(false);
 
   const module     = modules.find(
     (m) => m.moduleSlug === moduleSlug ||
@@ -196,16 +256,27 @@ const ModuleDataPage = () => {
     else { setSortField(field); setSortDir('asc'); }
   };
 
-  const handleDelete = async (id, label) => {
-    if (window.confirm(`Delete${label ? ` "${label}"` : ' this record'}? This cannot be undone.`))
-      await deleteRecord(moduleSlug, id);
+  const handleDelete = (id, label) => {
+    setDeleteModal({ id, label, isBulk: false });
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (!selected.length) return;
-    if (window.confirm(`Delete ${selected.length} selected record(s)? This cannot be undone.`)) {
-      for (const id of selected) await deleteRecord(moduleSlug, id);
-      setSelected([]);
+    setDeleteModal({ isBulk: true, ids: selected, count: selected.length });
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      if (deleteModal.isBulk) {
+        for (const id of deleteModal.ids) await deleteRecord(moduleSlug, id);
+        setSelected([]);
+      } else {
+        await deleteRecord(moduleSlug, deleteModal.id);
+      }
+    } finally {
+      setIsDeleting(false);
+      setDeleteModal(null);
     }
   };
 
@@ -262,6 +333,24 @@ const ModuleDataPage = () => {
 
   return (
     <div className="space-y-5">
+
+      {/* Delete confirmation modal */}
+      {deleteModal && (
+        <DeleteModal
+          label={deleteModal.label}
+          count={deleteModal.count}
+          isDeleting={isDeleting}
+          onConfirm={confirmDelete}
+          onCancel={() => !isDeleting && setDeleteModal(null)}
+        />
+      )}
+
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(12px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)     scale(1);    }
+        }
+      `}</style>
 
       {/* Page header */}
       <div>
@@ -423,6 +512,7 @@ const ModuleDataPage = () => {
         </div>
 
         {/* ── Pagination — ALWAYS rendered so footer never jumps ── */}
+        {total > 0 && (
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <p className="text-sm text-slate-500">
@@ -434,7 +524,7 @@ const ModuleDataPage = () => {
               className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600
                 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 cursor-pointer">
               {[5, 10, 15, 20].map((n) => (
-                <option key={n} value={n}>{n} / page</option>
+                <option key={n} value={n}>{n}</option>
               ))}
             </select>
           </div>
@@ -468,7 +558,7 @@ const ModuleDataPage = () => {
             </button>
           </div>
         </div>
-
+        )}
       </div>
     </div>
   );
