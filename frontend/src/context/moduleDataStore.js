@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 
 // Lazy import to avoid circular dependency
 const refreshSidebarCount = () => {
-  // Dynamically get moduleStore and re-fetch so sidebar count updates
   import('./moduleStore').then(({ default: useModuleStore }) => {
     useModuleStore.getState().fetchModules();
   });
@@ -20,6 +19,8 @@ const useModuleDataStore = create((set, get) => ({
 
   fetchRecords: async (moduleSlug, page = 1, limit = 20) => {
     if (get().isLoading) return;
+    // KEY FIX: Don't clear records here — keep old records visible during page transition
+    // ModuleDataPage uses useTransition + prevRecordsRef to show skeleton without layout shift
     set({ isLoading: true, error: null });
     try {
       const { data } = await api.get(`/${moduleSlug}?page=${page}&limit=${limit}`);
@@ -30,7 +31,8 @@ const useModuleDataStore = create((set, get) => ({
       });
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to load records.';
-      set({ error: message, isLoading: false, records: [] });
+      // On error: keep existing records visible, just show error toast
+      set({ error: message, isLoading: false });
       toast.error(message);
     }
   },
