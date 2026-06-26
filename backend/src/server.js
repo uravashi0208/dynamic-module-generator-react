@@ -65,6 +65,11 @@ app.get('/health', (req, res) =>
   res.json({ success: true, status: 'healthy', timestamp: new Date().toISOString() })
 );
 
+// ─── Uploads — serve uploaded files statically ───────────────────────────────
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir));
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 // Order matters: specific paths first, wildcard last.
 app.use('/api/auth',    authLimiter, authRoutes);
@@ -129,14 +134,19 @@ const startServer = async () => {
 
       const schemaFields = {};
       (mod.fields || []).forEach((f) => {
-        let type = String;
-        if (['number', 'range'].includes(f.fieldType))              type = Number;
-        else if (f.fieldType === 'checkbox')                        type = Boolean;
-        else if (['date', 'datetime-local'].includes(f.fieldType))  type = Date;
-        schemaFields[f.fieldName] = {
-          type,
-          required: f.validations?.required || false,
-        };
+        if (['number', 'range'].includes(f.fieldType)) {
+          schemaFields[f.fieldName] = { type: Number, required: f.validations?.required || false };
+        } else if (f.fieldType === 'checkbox') {
+          // Multi-checkbox stores array of selected string values — NOT Boolean
+          schemaFields[f.fieldName] = { type: [String], default: [] };
+        } else if (['date', 'datetime-local'].includes(f.fieldType)) {
+          schemaFields[f.fieldName] = { type: Date, required: f.validations?.required || false };
+        } else if (f.fieldType === 'file') {
+          // File fields store the uploaded file path as a string
+          schemaFields[f.fieldName] = { type: String, default: '' };
+        } else {
+          schemaFields[f.fieldName] = { type: String, required: f.validations?.required || false };
+        }
       });
       schemaFields._createdBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };
       schemaFields._updatedBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };

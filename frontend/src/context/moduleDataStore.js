@@ -50,10 +50,11 @@ const useModuleDataStore = create((set, get) => ({
     }
   },
 
-  createRecord: async (moduleSlug, payload) => {
+  createRecord: async (moduleSlug, payload, isFormData = false) => {
     set({ isSubmitting: true });
     try {
-      const { data } = await api.post(`/${moduleSlug}`, payload);
+      const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+      const { data } = await api.post(`/${moduleSlug}`, payload, config);
       set((state) => ({
         records: [data.data.record, ...state.records],
         pagination: state.pagination
@@ -72,10 +73,11 @@ const useModuleDataStore = create((set, get) => ({
     }
   },
 
-  updateRecord: async (moduleSlug, id, payload) => {
+  updateRecord: async (moduleSlug, id, payload, isFormData = false) => {
     set({ isSubmitting: true });
     try {
-      const { data } = await api.put(`/${moduleSlug}/${id}`, payload);
+      const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+      const { data } = await api.put(`/${moduleSlug}/${id}`, payload, config);
       set((state) => ({
         records: state.records.map((r) => (r._id === id ? data.data.record : r)),
         currentRecord: data.data.record,

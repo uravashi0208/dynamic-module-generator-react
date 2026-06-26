@@ -1,7 +1,6 @@
 /**
- * Test5ListPage.jsx  —  AUTO-GENERATED (2026-06-18T05:45:04.988Z)
- * Module: Test5  |  Slug: test5
- *
+ * DateTimeFormListPage.jsx  —  AUTO-GENERATED (2026-06-25T09:01:03.124Z)
+ * Module: Date Time Form  |  Slug: date-time-form
  * Safe to edit — regenerated only when module is deleted + recreated.
  */
 import { useEffect, useState, useRef } from 'react';
@@ -14,8 +13,8 @@ import {
 import useModuleDataStore from '../../context/moduleDataStore';
 import clsx from 'clsx';
 
-const MODULE_SLUG = 'test5';
-const MODULE_NAME = 'Test5';
+const MODULE_SLUG = 'date-time-form';
+const MODULE_NAME = 'Date Time Form';
 
 const CellValue = ({ value, fieldType }) => {
   if (value === null || value === undefined || value === '')
@@ -51,9 +50,8 @@ const CellValue = ({ value, fieldType }) => {
   return <span className="text-sm text-slate-700">{String(value)}</span>;
 };
 
-// ── Action menu — smart upward/downward positioning ──────────────────────────
 const ActionMenu = ({ onEdit, onDelete }) => {
-  const [open, setOpen]   = useState(false);
+  const [open, setOpen]     = useState(false);
   const [dropUp, setDropUp] = useState(false);
   const ref    = useRef(null);
   const btnRef = useRef(null);
@@ -99,15 +97,15 @@ const ActionMenu = ({ onEdit, onDelete }) => {
   );
 };
 
-const Test5ListPage = () => {
+const DateTimeFormListPage = () => {
   const navigate = useNavigate();
   const { records, pagination, isLoading, fetchRecords, deleteRecord } = useModuleDataStore();
-  const [page, setPage]   = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [page, setPage]     = useState(1);
+  const [limit, setLimit]   = useState(10);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState([]);
   const [sortField, setSortField] = useState(null);
-  const [sortDir, setSortDir] = useState('asc');
+  const [sortDir, setSortDir]     = useState('asc');
 
   useEffect(() => { setSelected([]); fetchRecords(MODULE_SLUG, page, limit); }, [page, limit]);
 
@@ -141,7 +139,6 @@ const Test5ListPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Client-side filter + sort
   let displayed = search.trim()
     ? records.filter((r) => Object.values(r).some((v) => String(v ?? '').toLowerCase().includes(search.toLowerCase())))
     : [...records];
@@ -157,23 +154,18 @@ const Test5ListPage = () => {
   const perPage    = pagination?.limit || limit;
   const totalPages = Math.ceil(total / perPage);
   const allSelected = displayed.length > 0 && selected.length === displayed.length;
-
-  const toggleAll = () => setSelected(allSelected ? [] : displayed.map(r => r._id));
-  const toggleOne = (id) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
-
-  const pageStart = ((page - 1) * perPage) + 1;
-  const pageEnd   = Math.min(page * perPage, total);
+  const toggleAll  = () => setSelected(allSelected ? [] : displayed.map(r => r._id));
+  const toggleOne  = (id) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  const pageStart  = ((page - 1) * perPage) + 1;
+  const pageEnd    = Math.min(page * perPage, total);
 
   return (
     <div className="space-y-5">
-
-      {/* ── Header ─────────────────────────────────────────────────── */}
       <div>
         <h1 className="text-xl font-bold text-slate-900">{MODULE_NAME} List</h1>
         <p className="text-sm text-slate-500 mt-0.5">Manage and track all {MODULE_NAME.toLowerCase()} records.</p>
       </div>
 
-      {/* ── Card ───────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
         {/* Card header */}
@@ -193,24 +185,20 @@ const Test5ListPage = () => {
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors shadow-sm">
               <Download className="w-4 h-4" /> Export
             </button>
-            <button onClick={() => navigate('/test5/new')}
+            <button onClick={() => navigate('/date-time-form/new')}
               className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm">
               <Plus className="w-4 h-4" /> Add {MODULE_NAME}
             </button>
           </div>
         </div>
 
-        {/* Search + Filter bar */}
+        {/* Search + Filter */}
         <div className="flex items-center justify-between gap-3 px-6 py-3 border-b border-slate-100">
           <div className="relative max-w-xs w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={search}
+            <input type="text" placeholder="Search..." value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
-            />
+              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors" />
           </div>
           <button className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
             <SlidersHorizontal className="w-4 h-4" /> Filter
@@ -227,7 +215,7 @@ const Test5ListPage = () => {
             <Database className="w-10 h-10 text-slate-200 mx-auto mb-3" />
             <p className="text-sm font-semibold text-slate-500">{search ? 'No records match your search.' : 'No records yet.'}</p>
             {!search && (
-              <button onClick={() => navigate('/test5/new')}
+              <button onClick={() => navigate('/date-time-form/new')}
                 className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg mx-auto transition-colors">
                 <Plus className="w-4 h-4" /> Add {MODULE_NAME}
               </button>
@@ -244,10 +232,19 @@ const Test5ListPage = () => {
                   </th>
               <th
                 className="px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap"
-                onClick={() => handleSort('emailssss')}
+                onClick={() => handleSort('dob')}
               >
                 <div className="flex items-center gap-1">
-                  Emailssss
+                  DOB
+                  <ChevronsUpDown className="w-3 h-3 text-slate-400" />
+                </div>
+              </th>
+              <th
+                className="px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap"
+                onClick={() => handleSort('login_date_time')}
+              >
+                <div className="flex items-center gap-1">
+                  Login Date Time
                   <ChevronsUpDown className="w-3 h-3 text-slate-400" />
                 </div>
               </th>
@@ -256,7 +253,7 @@ const Test5ListPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {displayed.map((record, idx) => (
+                {displayed.map((record) => (
                   <tr key={record._id}
                     className={clsx('transition-colors hover:bg-slate-50/80 group', selected.includes(record._id) && 'bg-indigo-50/40')}>
                     <td className="px-4 py-4">
@@ -264,16 +261,18 @@ const Test5ListPage = () => {
                         className="w-4 h-4 accent-indigo-600 rounded cursor-pointer" />
                     </td>
                     <td className="px-4 py-4">
-                      <CellValue value={record.emailssss} fieldType="email" />
+                      <CellValue value={record.dob} fieldType="date" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <CellValue value={record.login_date_time} fieldType="datetime-local" />
                     </td>
                     <td className="px-4 py-4 text-right text-sm text-slate-500 whitespace-nowrap">
                       {record.createdAt ? new Date(record.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                     </td>
                     <td className="px-4 py-4">
                       <ActionMenu
-                        record={record}
-                        onEdit={() => navigate('/test5/' + record._id + '/edit')}
-                        onDelete={() => handleDelete(record._id, record.emailssss)}
+                        onEdit={() => navigate('/date-time-form/' + record._id + '/edit')}
+                        onDelete={() => handleDelete(record._id, record.dob)}
                       />
                     </td>
                   </tr>
@@ -283,31 +282,21 @@ const Test5ListPage = () => {
           </div>
         )}
 
-        {/* ── Pagination ───────────────────────────────────────────── */}
+        {/* Pagination */}
         {total > 0 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 flex-wrap gap-3">
-            {/* Left: count + per-page selector */}
             <div className="flex items-center gap-3">
-              <p className="text-sm text-slate-500">
-                Showing {pageStart} to {pageEnd} of {total}
-              </p>
-              <select
-                value={limit}
-                onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-                className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 cursor-pointer"
-              >
+              <p className="text-sm text-slate-500">Showing {pageStart} to {pageEnd} of {total}</p>
+              <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 cursor-pointer">
                 {[5, 10, 15, 20].map((n) => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
             </div>
-            {/* Right: page buttons */}
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 <ChevronLeft className="w-4 h-4" />
               </button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -315,18 +304,13 @@ const Test5ListPage = () => {
                 return (
                   <button key={pg} onClick={() => setPage(pg)}
                     className={clsx('w-8 h-8 text-sm rounded-lg font-medium transition-colors',
-                      pg === page
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50')}>
+                      pg === page ? 'bg-indigo-600 text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-slate-50')}>
                     {pg}
                   </button>
                 );
               })}
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -337,4 +321,4 @@ const Test5ListPage = () => {
   );
 };
 
-export default Test5ListPage;
+export default DateTimeFormListPage;

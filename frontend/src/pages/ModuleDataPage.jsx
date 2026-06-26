@@ -13,13 +13,30 @@ import clsx from 'clsx';
 const CellValue = ({ value, fieldType }) => {
   if (value === null || value === undefined || value === '')
     return <span className="text-slate-300 italic text-sm">—</span>;
-  if (fieldType === 'checkbox')
+
+  if (fieldType === 'checkbox') {
+    // Array = multi-select checkbox options
+    if (Array.isArray(value)) {
+      if (value.length === 0) return <span className="text-slate-300 italic text-sm">—</span>;
+      return (
+        <div className="flex flex-wrap gap-1">
+          {value.map((v) => (
+            <span key={v} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+              {v}
+            </span>
+          ))}
+        </div>
+      );
+    }
+    // Boolean single checkbox
     return (
       <span className={clsx('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
         value ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600')}>
         {value ? 'Yes' : 'No'}
       </span>
     );
+  }
+
   if (fieldType === 'color')
     return (
       <div className="flex items-center gap-2">
@@ -51,44 +68,83 @@ const CellValue = ({ value, fieldType }) => {
       {s.length > 80 ? s.slice(0, 80) + '…' : s}
     </span>;
   }
+  if (fieldType === 'file') {
+    if (!value || value === '') return <span className="text-xs text-slate-400">—</span>;
+    // Cloudinary returns full https:// URL — use directly
+    // Fallback for legacy local uploads
+    const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(value) || value.includes('cloudinary');
+    const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
+    const src = value.startsWith('http') ? value : `${API_BASE}${value}`;
+    if (isImage) return (
+      <a href={src} target="_blank" rel="noreferrer"
+        className="block w-10 h-10 rounded-lg overflow-hidden border-2 border-slate-200 hover:border-indigo-400 transition-all flex-shrink-0 bg-slate-50">
+        <img
+          src={src}
+          alt="file"
+          className="w-full h-full object-cover"
+          onError={(e) => { e.target.style.display='none'; e.target.parentNode.innerHTML='<span style=\"font-size:10px;color:#94a3b8;padding:2px\">err</span>'; }}
+        />
+      </a>
+    );
+    const fname = value.split('/').pop();
+    return (
+      <a href={src} target="_blank" rel="noreferrer"
+        className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 hover:underline font-medium">
+        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+        </svg>
+        {fname.length > 20 ? fname.slice(0, 20) + '…' : fname}
+      </a>
+    );
+  }
   return <span className="text-sm text-slate-700">{String(value)}</span>;
 };
 
 // ── Action menu ───────────────────────────────────────────────────────────────
 const ActionMenu = ({ onEdit, onDelete }) => {
-  const [open, setOpen]     = useState(false);
-  const [dropUp, setDropUp] = useState(false);
-  const ref    = useRef(null);
-  const btnRef = useRef(null);
+  const [open, setOpen]       = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const ref                   = useRef(null);
+  const btnRef                = useRef(null);
 
   useEffect(() => {
-    const handler = (e) => {
+    const closeMenu = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const closeOnScroll = () => setOpen(false);
+    document.addEventListener('mousedown', closeMenu);
+    document.addEventListener('scroll', closeOnScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', closeMenu);
+      document.removeEventListener('scroll', closeOnScroll, true);
+    };
   }, []);
 
   const handleOpen = (e) => {
     e.stopPropagation();
     if (btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      setDropUp(window.innerHeight - rect.bottom < 120);
+      const menuH = 90;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < menuH) {
+        setMenuPos({ top: rect.top - menuH, left: rect.right - 144 });
+      } else {
+        setMenuPos({ top: rect.bottom + 4, left: rect.right - 144 });
+      }
     }
     setOpen((v) => !v);
   };
 
   return (
-    <div className="relative" ref={ref}>
+    <div ref={ref}>
       <button ref={btnRef} onClick={handleOpen}
         className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
         <MoreHorizontal className="w-4 h-4" />
       </button>
       {open && (
-        <div className={clsx(
-          'absolute right-0 z-50 w-36 bg-white rounded-xl shadow-lg border border-slate-100 py-1',
-          dropUp ? 'bottom-8' : 'top-8'
-        )}>
+        <div
+          style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 9999 }}
+          className="w-36 bg-white rounded-xl shadow-lg border border-slate-100 py-1">
           <button onClick={() => { setOpen(false); onEdit(); }}
             className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
             <Edit2 className="w-3.5 h-3.5 text-slate-400" /> Edit
@@ -109,31 +165,23 @@ const DeleteModal = ({ label, count, isDeleting, onConfirm, onCancel }) => {
   const isBulk = count > 1;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={!isDeleting ? onCancel : undefined}
       />
-      {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col items-center text-center animate-[fadeUp_0.18s_ease]">
-        {/* Trash icon with red bg */}
         <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
           <Trash2 className="w-7 h-7 text-red-500" />
         </div>
-
         <h2 className="text-lg font-bold text-slate-800 mb-1">
           {isBulk ? `Delete ${count} records?` : 'Delete record?'}
         </h2>
         <p className="text-sm text-slate-500 mb-6">
           {isBulk
             ? `${count} records will be permanently deleted and cannot be recovered.`
-            : <>
-                {label && <><span className="font-medium text-slate-700">"{label}"</span> </>}
-                will be permanently deleted and cannot be recovered.
-              </>
+            : <>{label && <><span className="font-medium text-slate-700">"{label}"</span> </>}will be permanently deleted and cannot be recovered.</>
           }
         </p>
-
         <div className="flex gap-3 w-full">
           <button
             onClick={onCancel}
@@ -197,16 +245,12 @@ const ModuleDataPage = () => {
   const [sortField, setSortField] = useState(null);
   const [sortDir, setSortDir]     = useState('asc');
 
-  // stableRows = last confirmed loaded rows, used while next fetch is in-flight
-  // stablePagination = last confirmed pagination, so footer never disappears
-  const [stableRows, setStableRows]           = useState([]);
+  const [stableRows, setStableRows]             = useState([]);
   const [stablePagination, setStablePagination] = useState(null);
-  const [stableCount, setStableCount]         = useState(10);
-  const prevModuleSlug                        = useRef(null);
+  const [stableCount, setStableCount]           = useState(10);
+  const prevModuleSlug                          = useRef(null);
 
-  // Delete modal state
   const [deleteModal, setDeleteModal] = useState(null);
-  // deleteModal = { id, label, isBulk, ids } | null
   const [isDeleting, setIsDeleting]   = useState(false);
 
   const module     = modules.find(
@@ -224,7 +268,6 @@ const ModuleDataPage = () => {
   useEffect(() => {
     if (!moduleSlug) return;
     if (prevModuleSlug.current !== moduleSlug) {
-      // New module — clear stable so we show fresh skeleton
       setStableRows([]);
       setStablePagination(null);
       setStableCount(limit);
@@ -234,20 +277,14 @@ const ModuleDataPage = () => {
     fetchRecords(moduleSlug, page, limit);
   }, [moduleSlug, page, limit]);
 
-  // Snapshot stable data only when a successful load completes
   useEffect(() => {
     if (!isLoading) {
       if (records.length > 0) {
         setStableRows(records);
         setStableCount(records.length);
       }
-      if (pagination) {
-        setStablePagination(pagination);
-      }
-      // Empty result — clear stable rows so empty state shows
-      if (records.length === 0 && pagination) {
-        setStableRows([]);
-      }
+      if (pagination) setStablePagination(pagination);
+      if (records.length === 0 && pagination) setStableRows([]);
     }
   }, [isLoading, records, pagination]);
 
@@ -256,9 +293,7 @@ const ModuleDataPage = () => {
     else { setSortField(field); setSortDir('asc'); }
   };
 
-  const handleDelete = (id, label) => {
-    setDeleteModal({ id, label, isBulk: false });
-  };
+  const handleDelete = (id, label) => setDeleteModal({ id, label, isBulk: false });
 
   const handleBulkDelete = () => {
     if (!selected.length) return;
@@ -294,7 +329,6 @@ const ModuleDataPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Always use stablePagination for display so footer never jumps/disappears
   const displayPagination = stablePagination || pagination;
   const total      = displayPagination?.total ?? 0;
   const perPage    = displayPagination?.limit || limit;
@@ -302,7 +336,6 @@ const ModuleDataPage = () => {
   const pageStart  = ((page - 1) * perPage) + 1;
   const pageEnd    = Math.min(page * perPage, total);
 
-  // Client-side filter + sort — only on live records
   let displayed = search.trim()
     ? records.filter((r) =>
         Object.values(r).some((v) =>
@@ -323,18 +356,21 @@ const ModuleDataPage = () => {
   const toggleAll   = () => setSelected(allSelected ? [] : displayed.map(r => r._id));
   const toggleOne   = (id) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
-  // 3 tbody states — table structure NEVER changes, only tbody content
   const isFirstLoad = isLoading && stableRows.length === 0;
   const isFading    = isLoading && stableRows.length > 0;
   const isLoaded    = !isLoading;
-
-  // Rows to paint (faded rows use stableRows so count stays same as previous page)
   const rowsToPaint = isFading ? stableRows : displayed;
 
   return (
     <div className="space-y-5">
 
-      {/* Delete confirmation modal */}
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(12px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
+
       {deleteModal && (
         <DeleteModal
           label={deleteModal.label}
@@ -345,13 +381,6 @@ const ModuleDataPage = () => {
         />
       )}
 
-      <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(12px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0)     scale(1);    }
-        }
-      `}</style>
-
       {/* Page header */}
       <div>
         <h1 className="text-xl font-bold text-slate-900">{moduleName} List</h1>
@@ -360,10 +389,9 @@ const ModuleDataPage = () => {
         </p>
       </div>
 
-      {/* Card — fixed structure, nothing inside ever conditionally mounts/unmounts the table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
-        {/* ── Card header ── */}
+        {/* Card header */}
         <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-100 flex-wrap">
           <div>
             <p className="font-semibold text-slate-800">{moduleName} List</p>
@@ -387,7 +415,7 @@ const ModuleDataPage = () => {
           </div>
         </div>
 
-        {/* ── Search + Filter ── */}
+        {/* Search + Filter */}
         <div className="flex items-center justify-between gap-3 px-6 py-3 border-b border-slate-100">
           <div className="relative max-w-xs w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -400,7 +428,6 @@ const ModuleDataPage = () => {
                 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors"
             />
           </div>
-          {/* Right side — fixed width so layout never shifts */}
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 flex items-center justify-center">
               {isFading && <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />}
@@ -411,7 +438,7 @@ const ModuleDataPage = () => {
           </div>
         </div>
 
-        {/* ── Table — ALWAYS mounted, never replaced ── */}
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -444,12 +471,12 @@ const ModuleDataPage = () => {
             </thead>
 
             <tbody>
-              {/* ── State 1: Very first load — skeleton rows ── */}
+              {/* State 1: First load skeleton */}
               {isFirstLoad && Array.from({ length: stableCount }).map((_, i) => (
                 <SkeletonRow key={i} index={i} colCount={fields.length} />
               ))}
 
-              {/* ── State 2 & 3: Show rows (faded while loading, normal when done) ── */}
+              {/* State 2 & 3: Faded old rows OR live rows */}
               {!isFirstLoad && rowsToPaint.map((record) => (
                 <tr key={record._id}
                   className={clsx(
@@ -480,15 +507,17 @@ const ModuleDataPage = () => {
                       : '—'}
                   </td>
                   <td className="px-4 py-[18px]">
+                    {!isFading && (
                       <ActionMenu
                         onEdit={() => navigate(`/${moduleSlug}/${record._id}/edit`)}
                         onDelete={() => handleDelete(record._id, record[firstField])}
                       />
+                    )}
                   </td>
                 </tr>
               ))}
 
-              {/* ── State 4: Loaded, truly empty ── */}
+              {/* State 4: Empty */}
               {isLoaded && displayed.length === 0 && (
                 <tr>
                   <td colSpan={fields.length + 3}>
@@ -511,54 +540,55 @@ const ModuleDataPage = () => {
           </table>
         </div>
 
-        {/* ── Pagination — ALWAYS rendered so footer never jumps ── */}
+        {/* Pagination */}
         {total > 0 && (
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <p className="text-sm text-slate-500">
-              {total > 0 ? `Showing ${pageStart} to ${pageEnd} of ${total}` : <span className="invisible">placeholder</span>}
-            </p>
-            <select
-              value={limit}
-              onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600
-                focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 cursor-pointer">
-              {[5, 10, 15, 20].map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
+          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-slate-500">
+                Showing {pageStart} to {pageEnd} of {total}
+              </p>
+              <select
+                value={limit}
+                onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 cursor-pointer">
+                {[5, 10, 15, 20].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || isLoading}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200
+                  text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pg = Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
+                return (
+                  <button key={pg} onClick={() => setPage(pg)}
+                    disabled={isLoading}
+                    className={clsx('w-8 h-8 text-sm rounded-lg font-medium transition-colors',
+                      pg === page
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-60')}>
+                    {pg}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages || isLoading}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200
+                  text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1 || isLoading}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200
-                text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const pg = Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
-              return (
-                <button key={pg} onClick={() => setPage(pg)}
-                  disabled={isLoading}
-                  className={clsx('w-8 h-8 text-sm rounded-lg font-medium transition-colors',
-                    pg === page
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-60')}>
-                  {pg}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages || isLoading}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200
-                text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
         )}
+
       </div>
     </div>
   );

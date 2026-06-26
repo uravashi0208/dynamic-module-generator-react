@@ -12,10 +12,12 @@
 
 const express   = require('express');
 const mongoose  = require('mongoose');
+const path      = require('path');
 const Module    = require('../models/Module');
 const { authenticate }  = require('../middleware/auth');
 const { AppError }      = require('../middleware/errorHandler');
 const logger            = require('../config/logger');
+const upload            = require('../middleware/upload');
 
 const router = express.Router();
 router.use(authenticate);
@@ -28,30 +30,42 @@ const resolveModel = async (moduleSlug) => {
   if (SKIP_SLUGS.has(moduleSlug)) return null;
 
   try {
-    // 1. Already cached
-    if (mongoose.models[moduleSlug]) return mongoose.models[moduleSlug];
-
-    // 2. Look up module in DB
+    // 1. Always fetch fresh module definition from DB so schema stays in sync
     let mod = await Module.findOne({ moduleSlug }).lean();
     if (!mod) mod = await Module.findOne({ moduleName: new RegExp('^' + moduleSlug + '$', 'i') }).lean();
     if (!mod) return null;
 
-    // 3. Build schema from field definitions
+    const slug = mod.moduleSlug;
+
+    // 2. Delete stale cached model so we always rebuild from the latest DB schema.
+    //    This prevents old Boolean/String types surviving across hot-reloads or code fixes.
+    if (mongoose.models[slug]) {
+      delete mongoose.models[slug];
+      if (mongoose.modelSchemas) delete mongoose.modelSchemas[slug];
+    }
+
+    // 3. Build schema from current field definitions
     const schemaFields = {};
     (mod.fields || []).forEach((f) => {
-      let type = String;
-      if (['number', 'range'].includes(f.fieldType))             type = Number;
-      else if (f.fieldType === 'checkbox')                       type = Boolean;
-      else if (['date', 'datetime-local'].includes(f.fieldType)) type = Date;
-      schemaFields[f.fieldName] = { type, required: f.validations?.required || false };
+      if (['number', 'range'].includes(f.fieldType)) {
+        schemaFields[f.fieldName] = { type: Number, required: f.validations?.required || false };
+      } else if (f.fieldType === 'checkbox') {
+        // Multi-checkbox: stores an array of selected string values
+        schemaFields[f.fieldName] = { type: [String], default: [] };
+      } else if (['date', 'datetime-local'].includes(f.fieldType)) {
+        schemaFields[f.fieldName] = { type: Date, required: f.validations?.required || false };
+      } else if (f.fieldType === 'file') {
+        // File fields store the uploaded file path/URL as string
+        schemaFields[f.fieldName] = { type: String, default: '' };
+      } else {
+        schemaFields[f.fieldName] = { type: String, required: f.validations?.required || false };
+      }
     });
     schemaFields._createdBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };
     schemaFields._updatedBy = { type: mongoose.Schema.Types.ObjectId, ref: 'User' };
 
-    const slug   = mod.moduleSlug;
     const schema = new mongoose.Schema(schemaFields, { timestamps: true });
-    // Guard against race condition — another request may have registered it already
-    const Model  = mongoose.models[slug] || mongoose.model(slug, schema, slug);
+    const Model  = mongoose.model(slug, schema, slug);
 
     // Ensure collection exists in MongoDB (non-fatal)
     try {
@@ -117,14 +131,25 @@ router.get('/:moduleSlug/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Files served directly from Cloudinary CDN — no local static route needed
+
 // ── POST /:moduleSlug — create ────────────────────────────────────────────────
-router.post('/:moduleSlug', async (req, res, next) => {
+router.post('/:moduleSlug', upload.any(), async (req, res, next) => {
   try {
     const Model = await resolveModel(req.params.moduleSlug);
     if (!Model) return next(new AppError(`Module '${req.params.moduleSlug}' not found.`, 404));
 
+    const body = { ...req.body };
+
+    // Attach Cloudinary URLs — multer-storage-cloudinary sets file.path = secure_url
+    if (req.files && req.files.length) {
+      req.files.forEach((file) => {
+        body[file.fieldname] = file.path; // full Cloudinary HTTPS URL
+      });
+    }
+
     const record = await Model.create({
-      ...req.body,
+      ...body,
       _createdBy: req.user._id,
       _updatedBy: req.user._id,
     });
@@ -134,14 +159,36 @@ router.post('/:moduleSlug', async (req, res, next) => {
 });
 
 // ── PUT /:moduleSlug/:id — update ─────────────────────────────────────────────
-router.put('/:moduleSlug/:id', async (req, res, next) => {
+router.put('/:moduleSlug/:id', upload.any(), async (req, res, next) => {
   try {
     const Model = await resolveModel(req.params.moduleSlug);
     if (!Model) return next(new AppError(`Module '${req.params.moduleSlug}' not found.`, 404));
 
+    const body = { ...req.body };
+
+    // Inject Cloudinary URLs into body (same as POST)
+    if (req.files && req.files.length) {
+      req.files.forEach((file) => {
+        body[file.fieldname] = file.path; // full Cloudinary HTTPS URL
+      });
+    }
+
+    // Remove only null/undefined fields — keep empty string? No, remove those too.
+    // But KEEP valid string values like Cloudinary URLs passed from frontend.
+    Object.keys(body).forEach((key) => {
+      if (body[key] === null || body[key] === undefined) {
+        delete body[key];
+      }
+      // Only delete empty strings for non-file fields
+      // File fields will have either a Cloudinary URL or nothing
+      if (body[key] === '' && !key.startsWith('_')) {
+        delete body[key];
+      }
+    });
+
     const record = await Model.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, _updatedBy: req.user._id },
+      { ...body, _updatedBy: req.user._id },
       { new: true, runValidators: true }
     );
     if (!record) return next(new AppError('Record not found.', 404));

@@ -10,7 +10,8 @@ const api = axios.create({
   baseURL: BASE_URL,
   timeout: 30000,
   withCredentials: true,
-  headers: { 'Content-Type': 'application/json' },
+  // No default Content-Type — axios auto-sets 'application/json' for objects
+  // and 'multipart/form-data' for FormData instances.
 });
 
 // ─── Request Interceptor ──────────────────────────────────────────────────────
@@ -18,6 +19,10 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
     if (token) config.headers.Authorization = `Bearer ${token}`;
+    // Set Content-Type only for non-FormData — let browser set multipart boundary automatically
+    if (!(config.data instanceof FormData)) {
+      config.headers['Content-Type'] = 'application/json';
+    }
     return config;
   },
   (error) => Promise.reject(error)

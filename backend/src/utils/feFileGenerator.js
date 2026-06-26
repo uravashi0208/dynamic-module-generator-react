@@ -342,7 +342,7 @@ ${colCells}
               <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
                 className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 cursor-pointer">
                 {[5, 10, 15, 20].map((n) => (
-                  <option key={n} value={n}>{n} / page</option>
+                  <option key={n} value={n}>{n}</option>
                 ))}
               </select>
             </div>
@@ -377,7 +377,7 @@ export default ${Pascal}ListPage;
 `;
 };
 
-// ── Form Page (unchanged) ─────────────────────────────────────────────────────
+// ── Form Page ────────────────────────────────────────────────────────────────
 const makeFormPage = (moduleName, moduleSlug, fields) => {
   const Pascal = toPascal(moduleName);
 
@@ -390,9 +390,35 @@ const makeFormPage = (moduleName, moduleSlug, fields) => {
       case 'textarea':
         input = `<textarea {...register('${f.fieldName}', ${reqRule})} rows={4} placeholder="${f.placeholder || `Enter ${f.fieldLabel}...`}" className={clsx('input-field resize-none', errors.${f.fieldName} && 'input-field-error')} />`;
         break;
-      case 'checkbox':
-        input = `<div className="flex items-center gap-3 pt-1"><input type="checkbox" id="${f.fieldName}" {...register('${f.fieldName}')} className="w-4 h-4 accent-brand-600 rounded" /><label htmlFor="${f.fieldName}" className="text-sm text-slate-700 cursor-pointer">${f.fieldLabel}</label></div>`;
+      case 'checkbox': {
+        // Multi-checkbox: each option is its own checkbox; value stored as array of strings
+        if (f.options && f.options.length > 0) {
+          const checkOpts = f.options.map(o =>
+            `              <label key="${o.value}" className="flex items-center gap-3 py-2 cursor-pointer group">\n` +
+            `                <input type="checkbox" value="${o.value}" {...register('${f.fieldName}')} className="w-4 h-4 accent-brand-600 rounded border-slate-300 cursor-pointer" />\n` +
+            `                <span className="text-sm text-slate-700 group-hover:text-slate-900">${o.label}</span>\n` +
+            `              </label>`
+          ).join('\n');
+          input = `<div className="space-y-0.5 pt-1">\n${checkOpts}\n            </div>`;
+        } else {
+          input = `<div className="flex items-center gap-3 pt-1"><input type="checkbox" id="${f.fieldName}" value="true" {...register('${f.fieldName}')} className="w-4 h-4 accent-brand-600 rounded" /><label htmlFor="${f.fieldName}" className="text-sm text-slate-700 cursor-pointer">${f.fieldLabel}</label></div>`;
+        }
         break;
+      }
+      case 'radio': {
+        if (f.options && f.options.length > 0) {
+          const radioOpts = f.options.map(o =>
+            `              <label key="${o.value}" className="flex items-center gap-3 py-2 cursor-pointer group">\n` +
+            `                <input type="radio" value="${o.value}" {...register('${f.fieldName}', ${reqRule})} className="w-4 h-4 accent-brand-600 cursor-pointer" />\n` +
+            `                <span className="text-sm text-slate-700 group-hover:text-slate-900">${o.label}</span>\n` +
+            `              </label>`
+          ).join('\n');
+          input = `<div className="space-y-0.5 pt-1">\n${radioOpts}\n            </div>`;
+        } else {
+          input = `<input type="radio" {...register('${f.fieldName}', ${reqRule})} className={clsx('input-field', errors.${f.fieldName} && 'input-field-error')} />`;
+        }
+        break;
+      }
       case 'select': {
         const opts = (f.options||[]).map(o => `              <option value="${o.value}">${o.label}</option>`).join('\n');
         input = `<select {...register('${f.fieldName}', ${reqRule})} className={clsx('input-field', errors.${f.fieldName} && 'input-field-error')}>\n              <option value="">Select ${f.fieldLabel}...</option>\n${opts}\n            </select>`;
