@@ -549,29 +549,29 @@ const ModuleDataPage = () => {
             </p>
 
             {/* Right: pagination controls */}
-            <div className="d-flex align-items-center gap-1">
+            <div className="d-flex align-items-center">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="btn btn-outline-secondary btn-sm px-3"
-                style={{ borderRadius: 8, fontSize: 13, borderColor: '#e5e5e5' }}>
+                className="btn btn-outline-secondary btn-sm px-3 py-2"
+                style={{ borderTopLeftRadius: 6,borderBottomLeftRadius: 6, fontSize: 13, borderColor: '#e5e5e5' }}>
                 Previous
               </button>
 
               {/* First page if gap */}
               {pageNums[0] > 1 && (
                 <>
-                  <button onClick={() => setPage(1)} className="btn btn-sm px-3"
-                    style={{ borderRadius: 8, fontSize: 13, border: '1px solid #e5e5e5', background: '#fff' }}>1</button>
+                  <button onClick={() => setPage(1)} className="btn btn-sm px-3 py-2"
+                    style={{ borderRadius: 0, fontSize: 13, border: '1px solid #e5e5e5', background: '#fff' }}>1</button>
                   {pageNums[0] > 2 && <span className="text-muted px-1" style={{ fontSize: 13 }}>…</span>}
                 </>
               )}
 
               {pageNums.map((p) => (
                 <button key={p} onClick={() => setPage(p)}
-                  className="btn btn-sm px-3"
+                  className="btn btn-sm px-3 py-2"
                   style={{
-                    borderRadius: 8, fontSize: 13,
+                    borderRadius: 0, fontSize: 13,
                     border: p === page ? 'none' : '1px solid #e5e5e5',
                     background: p === page ? 'var(--primary)' : '#fff',
                     color: p === page ? '#fff' : '#333',
@@ -585,16 +585,16 @@ const ModuleDataPage = () => {
               {pageNums[pageNums.length - 1] < totalPages && (
                 <>
                   {pageNums[pageNums.length - 1] < totalPages - 1 && <span className="text-muted px-1" style={{ fontSize: 13 }}>…</span>}
-                  <button onClick={() => setPage(totalPages)} className="btn btn-sm px-3"
-                    style={{ borderRadius: 8, fontSize: 13, border: '1px solid #e5e5e5', background: '#fff' }}>{totalPages}</button>
+                  <button onClick={() => setPage(totalPages)} className="btn btn-sm px-3 py-2"
+                    style={{ borderRadius: 0, fontSize: 13, border: '1px solid #e5e5e5', background: '#fff' }}>{totalPages}</button>
                 </>
               )}
 
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="btn btn-outline-secondary btn-sm px-3"
-                style={{ borderRadius: 8, fontSize: 13, borderColor: '#e5e5e5' }}>
+                className="btn btn-outline-secondary btn-sm px-3 py-2"
+                style={{ borderTopRightRadius: 6,borderBottomRightRadius: 6, fontSize: 13, borderColor: '#e5e5e5' }}>
                 Next
               </button>
             </div>
