@@ -1,127 +1,76 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ArrowLeft, Save, Loader2, Database, AlertCircle, Paperclip, X, Image } from 'lucide-react';
 import useModuleStore from '../context/moduleStore';
 import useModuleDataStore from '../context/moduleDataStore';
-import clsx from 'clsx';
 
-// ── File Input with preview ───────────────────────────────────────────────────
-// Cloudinary URLs are full https:// — API_BASE only used for legacy local uploads
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
 
+/* ── File input ── */
 const FileInput = ({ field, register, rules, error, existingUrl, setValue }) => {
-  // Cloudinary image URLs may end with .png/.jpg OR have /image/upload/ in path
-  const isImageUrl = (url) =>
-    url && (/\.(jpg|jpeg|png|gif|webp|svg)/i.test(url) || url.includes('/image/upload/'));
-
-  // newFile  = File object user just picked (null = not picked yet)
-  // cleared  = user explicitly removed the existing file
-  const [newFile,  setNewFile]  = useState(null);
-  const [cleared,  setCleared]  = useState(false);
-
+  const isImageUrl = (url) => url && (/\.(jpg|jpeg|png|gif|webp|svg)/i.test(url) || url.includes('/image/upload/'));
+  const [newFile, setNewFile]   = useState(null);
+  const [cleared, setCleared]   = useState(false);
   const { ref, onChange, ...rest } = register(field.fieldName, rules);
 
-  const handleChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setNewFile(file);
-    setCleared(false);
-    onChange(e);
-  };
+  const handleChange = (e) => { const f = e.target.files?.[0]; if (!f) return; setNewFile(f); setCleared(false); onChange(e); };
+  const handleClear  = (e) => { e.preventDefault(); setNewFile(null); setCleared(true); setValue(field.fieldName, null); };
 
-  const handleClear = (e) => {
-    e.preventDefault();
-    setNewFile(null);
-    setCleared(true);
-    // clear RHF value so no file is sent
-    setValue(field.fieldName, null);
-  };
-
-  // What to show as preview
   const showExisting = !cleared && !newFile && existingUrl;
-  const showNewImage = newFile && newFile.type.startsWith('image/');
   const [newPreview, setNewPreview] = useState(null);
-
   useEffect(() => {
-    if (!newFile) { setNewPreview(null); return; }
-    if (!newFile.type.startsWith('image/')) { setNewPreview(null); return; }
-    const reader = new FileReader();
-    reader.onload = (ev) => setNewPreview(ev.target.result);
-    reader.readAsDataURL(newFile);
+    if (!newFile || !newFile.type.startsWith('image/')) { setNewPreview(null); return; }
+    const reader = new FileReader(); reader.onload = (ev) => setNewPreview(ev.target.result); reader.readAsDataURL(newFile);
     return () => reader.abort();
   }, [newFile]);
 
-  const existingFullUrl = existingUrl
-    ? (existingUrl.startsWith('http') ? existingUrl : `${API_BASE}${existingUrl}`)
-    : null;
+  const existingFullUrl = existingUrl ? (existingUrl.startsWith('http') ? existingUrl : `${API_BASE}${existingUrl}`) : null;
 
   return (
-    <div className="space-y-2">
-      {/* Upload trigger */}
-      <label className={clsx(
-        'flex items-center gap-3 w-full px-4 py-3 border-2 border-dashed rounded-xl cursor-pointer transition-all',
-        error
-          ? 'border-red-300 bg-red-50'
-          : 'border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/30'
-      )}>
-        <div className="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Paperclip className="w-4 h-4 text-indigo-600" />
+    <div>
+      <label className={`d-flex align-items-center gap-3 w-100 p-3 rounded-3 border-2 border-dashed ${error ? 'border-danger bg-danger bg-opacity-10' : 'border-light'}`}
+        style={{ cursor:'pointer', borderStyle:'dashed', borderColor: error ? undefined : '#d4d4d4' }}>
+        <div className="icon-shape icon-sm rounded-2 bg-light flex-shrink-0">
+          <i className="ti ti-paperclip text-muted" style={{ fontSize:16 }} />
         </div>
-        <div className="flex-1 min-w-0">
-          {newFile ? (
-            <p className="text-sm font-medium text-slate-700 truncate">{newFile.name}</p>
-          ) : showExisting ? (
-            <>
-              <p className="text-sm font-medium text-slate-700 truncate">
-                {existingUrl.split('/').pop()}
-              </p>
-              <p className="text-xs text-indigo-500">Click to replace</p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-medium text-slate-600">Click to upload file</p>
-              <p className="text-xs text-slate-400">PNG, JPG, PDF, DOC up to 10MB</p>
-            </>
-          )}
+        <div className="flex-grow-1 text-truncate">
+          {newFile ? <p className="fw-semibold mb-0 text-truncate" style={{ fontSize:13 }}>{newFile.name}</p>
+           : showExisting ? <><p className="fw-semibold mb-0 text-truncate" style={{ fontSize:13 }}>{existingUrl.split('/').pop()}</p>
+               <p className="text-muted mb-0" style={{ fontSize:11 }}>Click to replace</p></>
+           : <><p className="text-muted mb-0" style={{ fontSize:13 }}>Click to upload file</p>
+               <p className="text-muted mb-0" style={{ fontSize:11 }}>PNG, JPG, PDF, DOC up to 10MB</p></>}
         </div>
         {(newFile || showExisting) && (
-          <button type="button" onClick={handleClear}
-            className="w-6 h-6 rounded-full bg-slate-200 hover:bg-red-100 flex items-center justify-center flex-shrink-0 transition-colors">
-            <X className="w-3 h-3 text-slate-500" />
+          <button type="button" onClick={handleClear} className="btn btn-light btn-icon" style={{ width:24, height:24 }}>
+            <i className="ti ti-x" style={{ fontSize:12 }} />
           </button>
         )}
-        <input type="file" className="sr-only" {...rest} ref={ref} onChange={handleChange} />
+        <input type="file" className="d-none" {...rest} ref={ref} onChange={handleChange} />
       </label>
-
-      {/* Existing image preview */}
       {showExisting && isImageUrl(existingUrl) && (
-        <div className="relative w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-          <img src={existingFullUrl} alt="current" className="w-full max-h-48 object-contain" />
-          <span className="absolute top-2 left-2 text-xs bg-black/50 text-white px-2 py-0.5 rounded-full">Current</span>
+        <div className="position-relative mt-2 rounded-3 overflow-hidden border bg-light">
+          <img src={existingFullUrl} alt="current" className="w-100" style={{ maxHeight:160, objectFit:'contain' }} />
+          <span className="position-absolute top-0 start-0 m-2 badge bg-dark bg-opacity-50 rounded-pill" style={{ fontSize:9 }}>Current</span>
           <button type="button" onClick={handleClear}
-            className="absolute top-2 right-2 w-6 h-6 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-colors">
-            <X className="w-3 h-3 text-white" />
+            className="position-absolute top-0 end-0 m-2 btn btn-dark btn-icon opacity-75" style={{ width:22, height:22 }}>
+            <i className="ti ti-x" style={{ fontSize:11 }} />
           </button>
         </div>
       )}
-
-      {/* New image preview */}
-      {showNewImage && newPreview && (
-        <div className="relative w-full rounded-xl overflow-hidden border border-indigo-200 bg-slate-50">
-          <img src={newPreview} alt="new" className="w-full max-h-48 object-contain" />
-          <span className="absolute top-2 left-2 text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full">New</span>
+      {newFile && newPreview && (
+        <div className="position-relative mt-2 rounded-3 overflow-hidden border bg-light">
+          <img src={newPreview} alt="new" className="w-100" style={{ maxHeight:160, objectFit:'contain' }} />
+          <span className="position-absolute top-0 start-0 m-2 badge rounded-pill" style={{ fontSize:9, background:'var(--primary)' }}>New</span>
         </div>
       )}
     </div>
   );
 };
 
-// ── Dynamic field renderer ────────────────────────────────────────────────────
+/* ── Dynamic field ── */
 const DynamicField = ({ field, register, errors, watch, setValue, existingValues }) => {
   const error      = errors?.[field.fieldName];
   const validations = field.validations || {};
-
   const rules = {
     required: validations.required ? `${field.fieldLabel} is required` : false,
     ...(validations.minLength ? { minLength: { value: validations.minLength, message: `Min ${validations.minLength} chars` } } : {}),
@@ -130,201 +79,171 @@ const DynamicField = ({ field, register, errors, watch, setValue, existingValues
     ...(validations.max !== undefined ? { max: { value: validations.max, message: `Max value: ${validations.max}` } } : {}),
     ...(field.fieldType === 'email' ? { pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email' } } : {}),
   };
-
-  const base = clsx(
-    'w-full px-3 py-2 text-sm border rounded-lg bg-white transition-colors',
-    'focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400',
-    error ? 'border-red-300 bg-red-50' : 'border-slate-200'
-  );
+  const cls = `form-control${error ? ' is-invalid' : ''}`;
 
   const renderInput = () => {
     switch (field.fieldType) {
       case 'textarea':
-        return (
-          <textarea {...register(field.fieldName, rules)} rows={4}
-            placeholder={`Enter ${field.fieldLabel.toLowerCase()}…`}
-            className={clsx(base, 'resize-none')} />
-        );
+        return <textarea {...register(field.fieldName, rules)} rows={4} placeholder={`Enter ${field.fieldLabel.toLowerCase()}…`} className={`${cls} form-control`} style={{ resize:'none' }} />;
       case 'checkbox':
-        // If options defined → render multiple checkboxes (multi-select)
-        if (field.options && field.options.length > 0) {
+        if (field.options?.length) {
+          const isSingle = field.selectionType === 'single';
+          // Always render as checkbox; for single-selection, manually deselect others
+          const currentVal = watch(field.fieldName) || [];
+          const handleSingleCheck = (optValue) => {
+            const checked = Array.isArray(currentVal)
+              ? currentVal.includes(optValue)
+              : currentVal === optValue;
+            if (isSingle) {
+              // Toggle: if already selected deselect, else select only this one
+              setValue(field.fieldName, checked ? [] : [optValue], { shouldDirty: true });
+            }
+          };
           return (
-            <div className="space-y-2 pt-1">
-              {field.options.map((opt) => (
-                <label key={opt.value} className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    value={opt.value}
-                    {...register(field.fieldName)}
-                    className="w-4 h-4 accent-indigo-600 rounded"
-                  />
-                  <span className="text-sm text-slate-700">{opt.label}</span>
-                </label>
-              ))}
+            <div>
+              {field.options.map((opt) => {
+                const checked = Array.isArray(currentVal)
+                  ? currentVal.includes(opt.value)
+                  : currentVal === opt.value;
+                return (
+                  <div key={opt.value} className="form-check">
+                    {isSingle ? (
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => handleSingleCheck(opt.value)}
+                        className="form-check-input"
+                        id={`${field.fieldName}_${opt.value}`}
+                      />
+                    ) : (
+                      <input
+                        type="checkbox"
+                        value={opt.value}
+                        {...register(field.fieldName)}
+                        className="form-check-input"
+                        id={`${field.fieldName}_${opt.value}`}
+                      />
+                    )}
+                    <label htmlFor={`${field.fieldName}_${opt.value}`} className="form-check-label" style={{ fontSize:13 }}>{opt.label}</label>
+                  </div>
+                );
+              })}
+              {isSingle && (
+                <p className="text-muted mb-0 mt-1" style={{ fontSize:10 }}>
+                  <i className="ti ti-info-circle me-1" />Single selection — choose only one
+                </p>
+              )}
             </div>
           );
         }
-        // No options → single boolean checkbox
         return (
-          <div className="flex items-center gap-3 pt-1">
-            <input type="checkbox" id={field.fieldName}
-              {...register(field.fieldName)}
-              className="w-4 h-4 accent-indigo-600 rounded" />
-            <label htmlFor={field.fieldName} className="text-sm text-slate-700 cursor-pointer">
-              {field.fieldLabel}
-            </label>
+          <div className="form-check">
+            <input type="checkbox" id={field.fieldName} {...register(field.fieldName)} className="form-check-input" />
+            <label htmlFor={field.fieldName} className="form-check-label" style={{ fontSize:13 }}>{field.fieldLabel}</label>
           </div>
         );
       case 'radio':
         return (
-          <div className="space-y-2 pt-1">
-            {(field.options || []).map((opt) => (
-              <label key={opt.value} className="flex items-center gap-3 cursor-pointer">
-                <input type="radio" value={opt.value}
-                  {...register(field.fieldName, rules)}
-                  className="w-4 h-4 accent-indigo-600" />
-                <span className="text-sm text-slate-700">{opt.label}</span>
-              </label>
+          <div>
+            {(field.options||[]).map((opt) => (
+              <div key={opt.value} className="form-check">
+                <input type="radio" value={opt.value} {...register(field.fieldName, rules)} className="form-check-input" id={`${field.fieldName}_${opt.value}`} />
+                <label htmlFor={`${field.fieldName}_${opt.value}`} className="form-check-label" style={{ fontSize:13 }}>{opt.label}</label>
+              </div>
             ))}
           </div>
         );
       case 'select':
         return (
-          <select {...register(field.fieldName, rules)} className={base}>
+          <select {...register(field.fieldName, rules)} className={`form-select${error?' is-invalid':''}`}>
             <option value="">Select {field.fieldLabel}…</option>
-            {(field.options || []).map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
+            {(field.options||[]).map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
           </select>
         );
       case 'file':
-        return (
-          <FileInput
-            field={field}
-            register={register}
-            rules={rules}
-            error={error}
-            existingUrl={existingValues?.[field.fieldName] || undefined}
-            setValue={setValue}
-            key={`${field.fieldName}-${existingValues?.[field.fieldName] || 'empty'}`}
-          />
-        );
+        return <FileInput field={field} register={register} rules={rules} error={error}
+          existingUrl={existingValues?.[field.fieldName]||undefined} setValue={setValue}
+          key={`${field.fieldName}-${existingValues?.[field.fieldName]||'empty'}`} />;
       case 'color':
-        return (
-          <input type="color" {...register(field.fieldName, rules)}
-            className="h-10 w-20 rounded-lg border border-slate-200 cursor-pointer bg-white p-1" />
-        );
+        return <input type="color" {...register(field.fieldName, rules)} className="form-control form-control-color" style={{ width:80, height:40 }} />;
       case 'range': {
-        const min = validations.min ?? 0;
-        const max = validations.max ?? 100;
-        const val = watch(field.fieldName) ?? Math.floor((min + max) / 2);
+        const min = validations.min ?? 0; const max = validations.max ?? 100;
+        const val = watch(field.fieldName) ?? Math.floor((min+max)/2);
         return (
-          <div className="space-y-1">
-            <input type="range" {...register(field.fieldName, { ...rules, valueAsNumber: true })}
-              min={min} max={max} className="w-full accent-indigo-600" />
-            <div className="flex justify-between text-xs text-slate-400">
-              <span>{min}</span>
-              <span className="font-semibold text-indigo-600">{val}</span>
-              <span>{max}</span>
+          <div>
+            <input type="range" {...register(field.fieldName, { ...rules, valueAsNumber:true })} min={min} max={max} className="form-range" />
+            <div className="d-flex justify-content-between" style={{ fontSize:11 }}>
+              <span className="text-muted">{min}</span>
+              <span className="fw-bold text-primary">{val}</span>
+              <span className="text-muted">{max}</span>
             </div>
           </div>
         );
       }
       case 'number':
-        return (
-          <input type="number"
-            {...register(field.fieldName, { ...rules, valueAsNumber: true })}
-            placeholder={`Enter ${field.fieldLabel.toLowerCase()}…`}
-            className={base} />
-        );
+        return <input type="number" {...register(field.fieldName, { ...rules, valueAsNumber:true })} placeholder={`Enter ${field.fieldLabel.toLowerCase()}…`} className={cls} />;
       default:
-        return (
-          <input type={field.fieldType}
-            {...register(field.fieldName, rules)}
-            placeholder={`Enter ${field.fieldLabel.toLowerCase()}…`}
-            defaultValue={field.defaultValue || ''}
-            className={base} />
-        );
+        return <input type={field.fieldType} {...register(field.fieldName, rules)} placeholder={`Enter ${field.fieldLabel.toLowerCase()}…`} defaultValue={field.defaultValue||''} className={cls} />;
     }
   };
 
-  const isFullWidth = ['textarea', 'file', 'checkbox', 'radio'].includes(field.fieldType);
+  // colSpan: 'half' = col-md-6, 'full' or wide types = col-12
+  const isWide = ['textarea','file','checkbox','radio'].includes(field.fieldType) ||
+    (field.fieldType === 'select' && (field.options||[]).length > 4);
+  const colClass = isWide ? 'col-12' : (field.colSpan === 'half' ? 'col-md-6' : 'col-12');
 
   return (
-    <div className={isFullWidth ? 'sm:col-span-2' : ''}>
-      {!(field.fieldType === 'checkbox' && !(field.options && field.options.length > 0)) && (
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-          {field.fieldLabel}
-          {validations.required && <span className="text-red-500 ml-0.5">*</span>}
+    <div className={colClass}>
+      {(field.fieldType !== 'checkbox' || (field.options && field.options.length > 0)) && (
+        <label className="form-label d-flex align-items-center gap-1" style={{ fontSize:13, fontWeight:500 }}>
+          {field.fieldLabel ? field.fieldLabel.charAt(0).toUpperCase() + field.fieldLabel.slice(1) : ''}
+          {validations.required && <span className="text-danger">*</span>}
         </label>
       )}
       {renderInput()}
-      {error && (
-        <p className="flex items-center gap-1.5 mt-1.5 text-xs text-red-600">
-          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-          {error.message}
-        </p>
-      )}
-      {field.helpText && !error && (
-        <p className="mt-1 text-xs text-slate-400">{field.helpText}</p>
-      )}
+      {error && <div className="invalid-feedback d-block">{error.message}</div>}
     </div>
   );
 };
 
-// ── Form Page ─────────────────────────────────────────────────────────────────
+/* ── Main Form Page ── */
 const ModuleDataFormPage = () => {
   const { moduleSlug, id } = useParams();
-  const navigate = useNavigate();
-  const isEdit   = Boolean(id);
+  const navigate           = useNavigate();
+  const isEdit             = Boolean(id);
 
-  const { modules, fetchModules }                            = useModuleStore();
-  const { fetchRecord, createRecord, updateRecord, isSubmitting } = useModuleDataStore();
+  const { modules, fetchModules }                                              = useModuleStore();
+  const { createRecord, updateRecord, fetchRecord, isSubmitting }             = useModuleDataStore();
+  const [isLoadingRecord, setIsLoadingRecord]                                 = useState(isEdit);
+  const [existingValues, setExistingValues]                                   = useState({});
 
-  const [isLoadingRecord, setIsLoadingRecord] = useState(isEdit);
-
-  const module     = modules.find(
-    (m) => m.moduleSlug === moduleSlug ||
-           m.moduleName?.toLowerCase().replace(/\s+/g, '-') === moduleSlug
-  );
+  const module     = modules.find((m) => m.moduleSlug === moduleSlug || m.moduleName?.toLowerCase().replace(/\s+/g,'-') === moduleSlug);
   const fields     = module?.fields || [];
   const moduleName = module?.moduleName || moduleSlug;
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } =
-    useForm({ mode: 'onBlur' });
-  const [existingValues, setExistingValues] = useState({});
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({ mode:'onBlur' });
 
-  useEffect(() => {
-    if (!modules.length) fetchModules();
-  }, []);
+  useEffect(() => { if (!modules.length) fetchModules(); }, []);
 
   useEffect(() => {
     if (isEdit && id) {
       setIsLoadingRecord(true);
       fetchRecord(moduleSlug, id).then((record) => {
         if (record) {
-          // Store the raw record immediately — so file fields (Cloudinary URLs)
-          // are always available in existingValues regardless of fields load timing
           setExistingValues(record);
-
-          // Build form defaults — apply date formatting if fields are loaded
           const defaults = {};
           if (fields.length > 0) {
             fields.forEach((f) => {
               if (record[f.fieldName] !== undefined) {
-                // NEVER set file input values via reset — browser blocks it for security
-                // File fields use existingValues separately for preview
                 if (f.fieldType === 'file') return;
                 if (f.fieldType === 'datetime-local' && record[f.fieldName])
-                  defaults[f.fieldName] = new Date(record[f.fieldName]).toISOString().slice(0, 16);
+                  defaults[f.fieldName] = new Date(record[f.fieldName]).toISOString().slice(0,16);
                 else if (f.fieldType === 'date' && record[f.fieldName])
-                  defaults[f.fieldName] = new Date(record[f.fieldName]).toISOString().slice(0, 10);
-                else
-                  defaults[f.fieldName] = record[f.fieldName];
+                  defaults[f.fieldName] = new Date(record[f.fieldName]).toISOString().slice(0,10);
+                else defaults[f.fieldName] = record[f.fieldName];
               }
             });
           } else {
-            // fields not yet loaded — copy non-file fields only
             Object.keys(record).forEach((key) => {
               const f = fields.find(fi => fi.fieldName === key);
               if (!f || f.fieldType !== 'file') defaults[key] = record[key];
@@ -337,19 +256,17 @@ const ModuleDataFormPage = () => {
     }
   }, [id, module]);
 
-  // Re-apply date formatting once fields load (edge case: fields arrive after record)
   useEffect(() => {
     if (!isEdit || !fields.length || !Object.keys(existingValues).length) return;
     const defaults = {};
     fields.forEach((f) => {
       if (existingValues[f.fieldName] !== undefined) {
-        if (f.fieldType === 'file') return; // skip — file inputs managed separately
+        if (f.fieldType === 'file') return;
         if (f.fieldType === 'datetime-local' && existingValues[f.fieldName])
-          defaults[f.fieldName] = new Date(existingValues[f.fieldName]).toISOString().slice(0, 16);
+          defaults[f.fieldName] = new Date(existingValues[f.fieldName]).toISOString().slice(0,16);
         else if (f.fieldType === 'date' && existingValues[f.fieldName])
-          defaults[f.fieldName] = new Date(existingValues[f.fieldName]).toISOString().slice(0, 10);
-        else
-          defaults[f.fieldName] = existingValues[f.fieldName];
+          defaults[f.fieldName] = new Date(existingValues[f.fieldName]).toISOString().slice(0,10);
+        else defaults[f.fieldName] = existingValues[f.fieldName];
       }
     });
     reset(defaults);
@@ -357,130 +274,88 @@ const ModuleDataFormPage = () => {
 
   const onSubmit = async (formData) => {
     const hasFileField = fields.some((f) => f.fieldType === 'file');
-
     if (hasFileField) {
       const fd = new FormData();
       fields.forEach((f) => {
         if (f.fieldType === 'file') {
-          // fileList is a FileList from <input type="file">
           const fileList = formData[f.fieldName];
-          // fileList should always be FileList or undefined — never a string now
-          // (file fields excluded from reset())
-          const hasNewFile = (fileList instanceof FileList && fileList.length > 0) ||
-                             (fileList && fileList[0] instanceof File);
-
-          if (hasNewFile) {
-            const fileObj = fileList instanceof FileList ? fileList[0] : fileList[0];
-            fd.append(f.fieldName, fileObj);
-          } else {
-            // No new file — preserve existing Cloudinary URL as plain text field
-            const existing = existingValues[f.fieldName];
-            if (existing) fd.append(f.fieldName, existing);
-            // If no existing either — skip, backend will leave DB value unchanged
-          }
+          const hasNewFile = (fileList instanceof FileList && fileList.length > 0) || (fileList && fileList[0] instanceof File);
+          if (hasNewFile) fd.append(f.fieldName, fileList instanceof FileList ? fileList[0] : fileList[0]);
+          else { const existing = existingValues[f.fieldName]; if (existing) fd.append(f.fieldName, existing); }
         } else if (f.fieldType === 'checkbox') {
           const val = formData[f.fieldName];
           const arr = Array.isArray(val) ? val : (val ? [val] : []);
           arr.forEach((v) => fd.append(f.fieldName, v));
         } else if (f.fieldType === 'number' || f.fieldType === 'range') {
-          const v = formData[f.fieldName];
-          if (v !== undefined && v !== '') fd.append(f.fieldName, String(v));
+          const v = formData[f.fieldName]; if (v !== undefined && v !== '') fd.append(f.fieldName, String(v));
         } else {
-          const v = formData[f.fieldName];
-          if (v !== undefined && v !== '') fd.append(f.fieldName, v);
+          const v = formData[f.fieldName]; if (v !== undefined && v !== '') fd.append(f.fieldName, v);
         }
       });
-      const result = isEdit
-        ? await updateRecord(moduleSlug, id, fd, true)
-        : await createRecord(moduleSlug, fd, true);
+      const result = isEdit ? await updateRecord(moduleSlug, id, fd, true) : await createRecord(moduleSlug, fd, true);
       if (result.success) navigate(`/${moduleSlug}`);
       return;
     }
-
-    // No file fields — send plain JSON
     const payload = {};
     fields.forEach((f) => {
       if (f.fieldType === 'checkbox') {
-        const val = formData[f.fieldName];
-        payload[f.fieldName] = Array.isArray(val) ? val : (val ? [val] : []);
+        const val = formData[f.fieldName]; payload[f.fieldName] = Array.isArray(val) ? val : (val ? [val] : []);
         return;
       }
       payload[f.fieldName] = formData[f.fieldName] ?? '';
     });
-
-    const result = isEdit
-      ? await updateRecord(moduleSlug, id, payload)
-      : await createRecord(moduleSlug, payload);
+    const result = isEdit ? await updateRecord(moduleSlug, id, payload) : await createRecord(moduleSlug, payload);
     if (result.success) navigate(`/${moduleSlug}`);
   };
 
   if (isLoadingRecord) return (
-    <div className="flex items-center justify-center h-64">
-      <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+    <div className="d-flex justify-content-center align-items-center" style={{ height:200 }}>
+      <div className="spinner-border text-primary" />
     </div>
   );
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
-
+    <div className="animate-slide-up" style={{ maxWidth:720 }}>
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate(`/${moduleSlug}`)}
-          className="p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
+      <div className="d-flex align-items-center gap-3 mb-4">
+        <button onClick={() => navigate(`/${moduleSlug}`)} className="btn btn-light btn-icon btn-sm rounded-2">
+          <i className="ti ti-arrow-left" />
         </button>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
-            <Database className="w-5 h-5 text-white" />
+        <div className="d-flex align-items-center gap-3">
+          <div className="icon-shape icon-md rounded-3 text-white" style={{ background:'var(--primary)' }}>
+            <i className="ti ti-database fs-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">
-              {isEdit ? 'Edit' : 'New'} {moduleName}
-            </h1>
-            <p className="text-xs text-slate-400 font-mono">
-              {isEdit ? 'Update record' : 'Create record'}
-            </p>
+            <h1 className="fs-5 fw-bold mb-0">{isEdit ? 'Edit' : 'New'} {moduleName}</h1>
+            <p className="text-muted mb-0" style={{ fontSize:11 }}>{isEdit ? 'Update record' : 'Create record'}</p>
           </div>
         </div>
       </div>
 
-      {/* Form card */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      {/* Form */}
+      <div className="card p-4">
         {fields.length === 0 ? (
-          <div className="text-center py-10">
-            <AlertCircle className="w-8 h-8 text-amber-400 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-slate-600">No fields defined</p>
-            <p className="text-xs text-slate-400 mt-1">
-              Go to the module configuration to add fields first.
-            </p>
+          <div className="text-center py-4">
+            <div className="icon-shape icon-md bg-warning bg-opacity-10 text-warning rounded-3 mx-auto mb-3">
+              <i className="ti ti-alert-triangle fs-5" />
+            </div>
+            <p className="fw-semibold mb-1">No fields defined</p>
+            <p className="text-muted small">Go to the module configuration to add fields first.</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="row g-4 mb-4">
               {fields.map((field) => (
-                <DynamicField
-                  key={field.fieldName}
-                  field={field}
-                  register={register}
-                  errors={errors}
-                  watch={watch}
-                  setValue={setValue}
-                  existingValues={existingValues}
-                />
+                <DynamicField key={field.fieldName} field={field} register={register}
+                  errors={errors} watch={watch} setValue={setValue} existingValues={existingValues} />
               ))}
             </div>
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-              <button type="button"
-                onClick={() => navigate(`/${moduleSlug}`)}
-                disabled={isSubmitting}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors disabled:opacity-50">
-                Cancel
-              </button>
-              <button type="submit" disabled={isSubmitting}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm disabled:opacity-50">
-                {isSubmitting
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
-                  : <><Save className="w-4 h-4" /> {isEdit ? 'Update' : 'Create'}</>}
+            <div className="d-flex align-items-center justify-content-end gap-2 pt-3 border-top">
+              <button type="button" onClick={() => navigate(`/${moduleSlug}`)} disabled={isSubmitting}
+                className="btn btn-outline-secondary">Cancel</button>
+              <button type="submit" disabled={isSubmitting} className="btn btn-primary d-flex align-items-center gap-2">
+                {isSubmitting ? <><span className="spinner-border spinner-border-sm" /> Saving…</>
+                  : <><i className="ti ti-device-floppy" /> {isEdit ? 'Update' : 'Create'}</>}
               </button>
             </div>
           </form>

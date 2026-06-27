@@ -3,78 +3,62 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Layers, ArrowRight, AlertCircle } from 'lucide-react';
 import useAuthStore from '../context/authStore';
-import clsx from 'clsx';
 
 const schema = z.object({
-  email: z.string().min(1, 'Email is required').email('Enter a valid email'),
+  email:    z.string().min(1, 'Email is required').email('Enter a valid email'),
   password: z.string().min(1, 'Password is required'),
 });
 
 const LoginPage = () => {
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPw, setShowPw] = useState(false);
   const { login, isLoading } = useAuthStore();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from?.pathname || '/dashboard';
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const from      = location.state?.from?.pathname || '/dashboard';
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setError,
-  } = useForm({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, formState: { errors }, setError } = useForm({ resolver: zodResolver(schema) });
 
   const onSubmit = async (data) => {
     const result = await login(data);
-    console.log("result :",result);
-    
-    if (result.success) {
-      navigate(from, { replace: true });
-    } else {
-      setError('root', { message: result.error });
-    }
+    if (result.success) navigate(from, { replace: true });
+    else setError('root', { message: result.error });
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-950 via-brand-900 to-slate-900 flex items-center justify-center p-4">
-      {/* Background pattern */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl" />
-        <div
-          className="absolute inset-0 opacity-5"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}
-        />
+    <div className="auth-bg">
+      {/* blobs */}
+      <div style={{ position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none' }}>
+        <div style={{ position:'absolute', top:'25%', left:'-8rem', width:'24rem', height:'24rem', background:'rgba(230,98,57,.18)', borderRadius:'50%', filter:'blur(72px)' }} />
+        <div style={{ position:'absolute', bottom:'25%', right:'-8rem', width:'24rem', height:'24rem', background:'rgba(99,102,241,.18)', borderRadius:'50%', filter:'blur(72px)' }} />
       </div>
 
-      <div className="relative w-full max-w-md animate-fade-in">
+      <div className="animate-fade-in" style={{ position:'relative', width:'100%', maxWidth:420 }}>
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-brand-500 rounded-2xl shadow-glow-lg mb-4">
-            <Layers className="w-7 h-7 text-white" />
+        <div className="text-center mb-4">
+          <div className="d-inline-flex align-items-center justify-content-center rounded-3 mb-3"
+            style={{ width:56, height:56, background:'var(--primary)' }}>
+            <i className="ti ti-cpu text-white" style={{ fontSize:26 }} />
           </div>
-          <h1 className="text-2xl font-bold text-white">Dynamic Module Gen</h1>
-          <p className="text-brand-300 text-sm mt-1">Sign in to your workspace</p>
+          <h1 className="fw-bold text-white fs-4 mb-0">Dynamic Module Gen</h1>
+          <p style={{ color:'rgba(255,255,255,.6)', fontSize:13 }}>Sign in to your workspace</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8 shadow-2xl">
-          <h2 className="text-xl font-semibold text-white mb-6">Welcome back</h2>
+        <div className="auth-card">
+          <h2 className="text-white fw-semibold mb-4" style={{ fontSize:18 }}>Welcome back</h2>
 
           {errors.root && (
-            <div className="flex items-center gap-2 px-3 py-2.5 mb-4 bg-red-500/20 border border-red-500/30 rounded-lg text-red-200 text-sm">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <div className="d-flex align-items-center gap-2 rounded-2 mb-3 px-3 py-2"
+              style={{ background:'rgba(251,44,54,.2)', border:'1px solid rgba(251,44,54,.3)', color:'#fca5a5', fontSize:13 }}>
+              <i className="ti ti-alert-circle" />
               {errors.root.message}
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-brand-200 mb-1.5">
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="mb-3">
+              <label className="d-block mb-1" style={{ color:'rgba(255,255,255,.75)', fontSize:13, fontWeight:500 }}>
                 Email address
               </label>
               <input
@@ -82,69 +66,48 @@ const LoginPage = () => {
                 type="email"
                 autoComplete="email"
                 placeholder="you@example.com"
-                className={clsx(
-                  'w-full px-3.5 py-2.5 bg-white/10 border rounded-lg text-white placeholder-white/30 text-sm',
-                  'focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all',
-                  errors.email ? 'border-red-400/60' : 'border-white/20'
-                )}
+                className={`auth-input${errors.email ? ' is-error' : ''}`}
               />
-              {errors.email && (
-                <p className="mt-1.5 text-xs text-red-300">{errors.email.message}</p>
-              )}
+              {errors.email && <p style={{ color:'#fca5a5', fontSize:11, marginTop:4 }}>{errors.email.message}</p>}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-brand-200 mb-1.5">
+            <div className="mb-4">
+              <label className="d-block mb-1" style={{ color:'rgba(255,255,255,.75)', fontSize:13, fontWeight:500 }}>
                 Password
               </label>
-              <div className="relative">
+              <div className="position-relative">
                 <input
                   {...register('password')}
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPw ? 'text' : 'password'}
                   autoComplete="current-password"
                   placeholder="••••••••"
-                  className={clsx(
-                    'w-full px-3.5 py-2.5 pr-10 bg-white/10 border rounded-lg text-white placeholder-white/30 text-sm',
-                    'focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all',
-                    errors.password ? 'border-red-400/60' : 'border-white/20'
-                  )}
+                  className={`auth-input${errors.password ? ' is-error' : ''}`}
+                  style={{ paddingRight: '2.5rem' }}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+                  onClick={() => setShowPw(!showPw)}
+                  className="btn p-0 border-0 position-absolute top-50 translate-middle-y"
+                  style={{ right:'0.75rem', color:'rgba(255,255,255,.4)', background:'transparent' }}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <i className={`ti ${showPw ? 'ti-eye-off' : 'ti-eye'}`} />
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1.5 text-xs text-red-300">{errors.password.message}</p>
-              )}
+              {errors.password && <p style={{ color:'#fca5a5', fontSize:11, marginTop:4 }}>{errors.password.message}</p>}
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-400 disabled:opacity-60 
-                text-white font-semibold rounded-lg transition-all duration-150 shadow-glow mt-2"
-            >
+            <button type="submit" disabled={isLoading} className="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
               {isLoading ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Signing in...
-                </>
+                <><span className="spinner-border spinner-border-sm" /> Signing in…</>
               ) : (
-                <>
-                  Sign in
-                  <ArrowRight className="w-4 h-4" />
-                </>
+                <>Sign in <i className="ti ti-arrow-right" /></>
               )}
             </button>
           </form>
 
-          <p className="text-center text-sm text-white/50 mt-6">
+          <p className="text-center mt-3 mb-0" style={{ color:'rgba(255,255,255,.5)', fontSize:13 }}>
             Don't have an account?{' '}
-            <Link to="/register" className="text-brand-300 hover:text-brand-200 font-medium transition-colors">
+            <Link to="/register" style={{ color:'rgba(255,255,255,.85)', fontWeight:500, textDecoration:'none' }}>
               Create one
             </Link>
           </p>

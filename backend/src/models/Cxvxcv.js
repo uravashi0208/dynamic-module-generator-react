@@ -1,9 +1,14 @@
 // Auto-generated – do not edit manually. Re-generated on every module save.
 const mongoose = require('mongoose');
 
-const Test1Schema = new mongoose.Schema(
+const CxvxcvSchema = new mongoose.Schema(
   {
-  name: { type: String, },
+  test1: { type: String, },
+  test2: { type: String, },
+  test3: { type: String, },
+  test4: { type: String, },
+  test5: { type: String, },
+  test6: { type: String, },
     _createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     _updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
@@ -12,5 +17,5 @@ const Test1Schema = new mongoose.Schema(
 
 // Prevent OverwriteModelError on hot-reload
 module.exports =
-  mongoose.models['test1'] ||
-  mongoose.model('test1', Test1Schema, 'test1');
+  mongoose.models['cxvxcv'] ||
+  mongoose.model('cxvxcv', CxvxcvSchema, 'cxvxcv');

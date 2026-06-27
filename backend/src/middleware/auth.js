@@ -5,15 +5,17 @@ const logger = require('../config/logger');
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
+    // Also accept token from query param (for file download links)
+    const queryToken = req.query.token;
 
-    if (!authHeader?.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith('Bearer ') && !queryToken) {
       return res.status(401).json({
         success: false,
         message: 'Access denied. No token provided.',
       });
     }
 
-    const token = authHeader.split(' ')[1];
+    const token = queryToken || authHeader.split(' ')[1];
 
     let decoded;
     try {

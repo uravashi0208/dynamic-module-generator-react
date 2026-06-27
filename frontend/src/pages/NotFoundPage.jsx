@@ -1,22 +1,19 @@
 import { useNavigate } from 'react-router-dom';
-import { Home, ArrowLeft } from 'lucide-react';
 
 const NotFoundPage = () => {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-surface-50 flex items-center justify-center p-4">
-      <div className="text-center max-w-md animate-slide-up">
-        <div className="text-8xl font-black text-slate-100 select-none mb-2">404</div>
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">Page Not Found</h1>
-        <p className="text-slate-500 text-sm mb-6">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="flex items-center justify-center gap-3">
-          <button onClick={() => navigate(-1)} className="btn-secondary">
-            <ArrowLeft className="w-4 h-4" /> Go Back
+    <div style={{ minHeight:'100vh', background:'var(--gray-50)', display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }}>
+      <div className="text-center animate-slide-up" style={{ maxWidth:400 }}>
+        <div style={{ fontSize:'6rem', fontWeight:900, color:'#e5e5e5', lineHeight:1, userSelect:'none' }}>404</div>
+        <h1 className="fs-4 fw-bold mb-2">Page Not Found</h1>
+        <p className="text-muted small mb-4">The page you're looking for doesn't exist or has been moved.</p>
+        <div className="d-flex gap-3 justify-content-center">
+          <button onClick={() => navigate(-1)} className="btn btn-outline-secondary d-flex align-items-center gap-2">
+            <i className="ti ti-arrow-left" /> Go Back
           </button>
-          <button onClick={() => navigate('/dashboard')} className="btn-primary">
-            <Home className="w-4 h-4" /> Dashboard
+          <button onClick={() => navigate('/dashboard')} className="btn btn-primary d-flex align-items-center gap-2">
+            <i className="ti ti-home" /> Dashboard
           </button>
         </div>
       </div>

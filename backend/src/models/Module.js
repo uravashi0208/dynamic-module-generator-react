@@ -62,6 +62,25 @@ const fieldSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Whether this field is shown as a column in the records table.
+    // Lets admins pick only the important fields so the table doesn't need horizontal scroll.
+    showInTable: {
+      type: Boolean,
+      default: true,
+    },
+    // For 'checkbox' type fields only: whether the option group behaves as
+    // a single-select (radio-like) or multi-select (classic checkbox group).
+    selectionType: {
+      type: String,
+      enum: ['single', 'multiple'],
+      default: 'multiple',
+    },
+    // Form layout: 'full' = full row width, 'half' = half row (2 fields side-by-side)
+    colSpan: {
+      type: String,
+      enum: ['full', 'half'],
+      default: 'full',
+    },
   },
   { _id: true }
 );
@@ -94,6 +113,13 @@ const moduleSchema = new mongoose.Schema(
     icon: {
       type: String,
       default: 'cube',
+    },
+    // Controls which action buttons (View / Edit / Delete) appear in the
+    // records table for this module. Whatever is checked here is shown there.
+    permissions: {
+      canView:   { type: Boolean, default: true },
+      canEdit:   { type: Boolean, default: true },
+      canDelete: { type: Boolean, default: true },
     },
     fields: [fieldSchema],
     isActive: {

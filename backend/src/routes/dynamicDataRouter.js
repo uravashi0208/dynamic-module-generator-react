@@ -211,3 +211,111 @@ router.delete('/:moduleSlug/:id', async (req, res, next) => {
 });
 
 module.exports = router;
+// ── GET /:moduleSlug/export/excel ─────────────────────────────────────────────
+router.get('/:moduleSlug/export/excel', async (req, res, next) => {
+  try {
+    const { moduleSlug } = req.params;
+    const Model = await resolveModel(moduleSlug);
+    if (!Model) return next(new AppError(`Module '${moduleSlug}' not found.`, 404));
+
+    const mod     = await Module.findOne({ moduleSlug }).lean();
+    const fields  = mod?.fields || [];
+    const records = await Model.find().sort({ createdAt: -1 }).lean();
+
+    const ExcelJS = require('exceljs');
+    const wb      = new ExcelJS.Workbook();
+    const ws      = wb.addWorksheet(moduleSlug);
+
+    // Header row
+    const headers = fields.map((f) => ({ header: f.fieldLabel, key: f.fieldName, width: 20 }));
+    headers.push({ header: 'Created At', key: 'createdAt', width: 20 });
+    ws.columns = headers;
+
+    // Style header
+    ws.getRow(1).eachCell((cell) => {
+      cell.font      = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE66239' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    // Data rows
+    records.forEach((r) => {
+      const row = {};
+      fields.forEach((f) => { row[f.fieldName] = Array.isArray(r[f.fieldName]) ? r[f.fieldName].join(', ') : (r[f.fieldName] ?? ''); });
+      row.createdAt = r.createdAt ? new Date(r.createdAt).toLocaleString() : '';
+      ws.addRow(row);
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${moduleSlug}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) { next(err); }
+});
+
+// ── GET /:moduleSlug/export/pdf ───────────────────────────────────────────────
+router.get('/:moduleSlug/export/pdf', async (req, res, next) => {
+  try {
+    const { moduleSlug } = req.params;
+    const Model = await resolveModel(moduleSlug);
+    if (!Model) return next(new AppError(`Module '${moduleSlug}' not found.`, 404));
+
+    const mod     = await Module.findOne({ moduleSlug }).lean();
+    const fields  = mod?.fields || [];
+    const records = await Model.find().sort({ createdAt: -1 }).lean();
+
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${moduleSlug}.pdf"`);
+    doc.pipe(res);
+
+    // Title
+    doc.fontSize(18).fillColor('#E66239').text(moduleSlug.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) + ' Report', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(10).fillColor('#666').text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+    doc.moveDown(1);
+
+    if (fields.length === 0 || records.length === 0) {
+      doc.fontSize(12).fillColor('#999').text('No records found.', { align: 'center' });
+      doc.end();
+      return;
+    }
+
+    // Table config
+    const usableFields = fields.filter(f => !['file','password'].includes(f.fieldType)).slice(0, 7);
+    const colW    = Math.floor((doc.page.width - 60) / (usableFields.length + 1));
+    const rowH    = 22;
+    let y         = doc.y;
+    const startX  = 30;
+
+    const drawRow = (values, isHeader = false) => {
+      if (y + rowH > doc.page.height - 40) {
+        doc.addPage();
+        y = 30;
+        drawRow(usableFields.map(f => f.fieldLabel).concat('Created At'), true);
+      }
+      // Row bg
+      doc.rect(startX, y, doc.page.width - 60, rowH)
+         .fill(isHeader ? '#E66239' : (values._idx % 2 === 0 ? '#FFF5F2' : '#FFFFFF'));
+
+      const rowValues = isHeader ? values : usableFields.map(f => {
+        const v = values[f.fieldName];
+        return Array.isArray(v) ? v.join(', ') : (v == null ? '' : String(v).slice(0,40));
+      }).concat(values.createdAt ? new Date(values.createdAt).toLocaleDateString() : '');
+
+      rowValues.forEach((val, i) => {
+        doc.fillColor(isHeader ? '#FFFFFF' : '#333333')
+           .fontSize(isHeader ? 9 : 8)
+           .text(String(val), startX + i * colW + 4, y + 6, { width: colW - 8, height: rowH - 4, ellipsis: true });
+      });
+      y += rowH;
+    };
+
+    drawRow(usableFields.map(f => f.fieldLabel).concat('Created At'), true);
+    records.forEach((r, idx) => drawRow({ ...r, _idx: idx }));
+
+    doc.end();
+  } catch (err) { next(err); }
+});

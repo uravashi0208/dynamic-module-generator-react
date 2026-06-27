@@ -392,7 +392,7 @@ const createModule = async (req, res, next) => {
 
   let module = null;
   try {
-    const { moduleName, description, icon, fields } = req.body;
+    const { moduleName, description, icon, fields, permissions } = req.body;
 
     // ── Validation ──────────────────────────────────────────────────────────
     if (!moduleName || !moduleName.trim()) {
@@ -408,6 +408,11 @@ const createModule = async (req, res, next) => {
       description: description || '',
       icon: icon || 'cube',
       fields: fields || [],
+      permissions: {
+        canView:   permissions?.canView   !== undefined ? permissions.canView   : true,
+        canEdit:   permissions?.canEdit   !== undefined ? permissions.canEdit   : true,
+        canDelete: permissions?.canDelete !== undefined ? permissions.canDelete : true,
+      },
       createdBy: req.user._id,
       updatedBy: req.user._id,
     });
@@ -478,7 +483,7 @@ const updateModule = async (req, res, next) => {
   const reqId = `[updateModule][${req.params.id}]`;
   logger.info(`${reqId} ▶ REQUEST RECEIVED — user: ${req.user?.email} body keys: ${Object.keys(req.body).join(', ')}`);
   try {
-    const { moduleName, description, icon, fields, isActive } = req.body;
+    const { moduleName, description, icon, fields, isActive, permissions } = req.body;
     logger.debug(`${reqId} Fetching module from DB...`);
     const module = await Module.findById(req.params.id);
     if (!module) {
@@ -495,6 +500,14 @@ const updateModule = async (req, res, next) => {
     if (icon        !== undefined) { logger.debug(`${reqId} Updating icon: "${module.icon}" → "${icon}"`); module.icon        = icon; }
     if (fields      !== undefined) { logger.debug(`${reqId} Updating fields: ${module.fields.length} → ${fields.length}`); module.fields      = fields; }
     if (isActive    !== undefined) { logger.debug(`${reqId} Updating isActive: ${module.isActive} → ${isActive}`); module.isActive    = isActive; }
+    if (permissions !== undefined) {
+      logger.debug(`${reqId} Updating permissions`);
+      module.permissions = {
+        canView:   permissions?.canView   !== undefined ? permissions.canView   : true,
+        canEdit:   permissions?.canEdit   !== undefined ? permissions.canEdit   : true,
+        canDelete: permissions?.canDelete !== undefined ? permissions.canDelete : true,
+      };
+    }
     module.updatedBy = req.user._id;
 
     logger.debug(`${reqId} Saving to DB...`);
