@@ -3,51 +3,45 @@ import { NavLink, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import useAuthStore from '../../context/authStore';
 import useModuleStore from '../../context/moduleStore';
 
-const staticNavItems = [
-  { to: '/dashboard', icon: 'ti-home',         label: 'Dashboard' },
-  { to: '/modules',   icon: 'ti-box-seam',      label: 'Modules' },
-  { to: '/profile',   icon: 'ti-user-circle',   label: 'Profile' },
+const STATIC_NAV = [
+  { to: '/dashboard', icon: 'ti-home',       label: 'Dashboard' },
+  { to: '/modules',   icon: 'ti-box-seam',   label: 'Modules' },
+  { to: '/profile',   icon: 'ti-user-circle', label: 'Profile' },
 ];
 
 const AppLayout = () => {
-  const [collapsed, setCollapsed]       = useState(false);
-  const [mobileOpen, setMobileOpen]     = useState(false);
-  const [modulesOpen, setModulesOpen]   = useState(true);
-  const { user, logout }                = useAuthStore();
-  const { modules, fetchModules }       = useModuleStore();
-  const navigate                        = useNavigate();
-  const location                        = useLocation();
-  const overlayRef                      = useRef(null);
+  const [collapsed, setCollapsed]     = useState(false);
+  const [mobileOpen, setMobileOpen]   = useState(false);
+  const [modulesOpen, setModulesOpen] = useState(true);
+  const { user, logout }              = useAuthStore();
+  const { modules, fetchModules }     = useModuleStore();
+  const navigate                      = useNavigate();
+  const location                      = useLocation();
 
-  useEffect(() => { fetchModules(); }, []); // eslint-disable-line
+  useEffect(() => { fetchModules(); }, []);
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
-
+  const closeMobile  = () => setMobileOpen(false);
   const activeModules = modules.filter((m) => m.isActive);
-
-  const closeMobile = () => setMobileOpen(false);
 
   return (
     <>
-      {/* Overlay (mobile) */}
+      {/* Mobile overlay */}
       <div
-        ref={overlayRef}
         className={`overlay${mobileOpen ? ' show' : ''}`}
         onClick={closeMobile}
       />
 
       {/* ── Sidebar ── */}
       <aside className={`sidebar${collapsed ? ' collapsed' : ''}${mobileOpen ? ' mobile-show' : ''}`}>
-        {/* Logo */}
         <div className="logo-area">
           <i className="ti ti-cpu fs-5 text-primary" />
           <span className="logo-text fw-bold" style={{ fontSize: 15 }}>ModuleGen</span>
         </div>
 
-        {/* Nav */}
         <nav>
           <p className="nav-label">Main</p>
-          {staticNavItems.map(({ to, icon, label }) => (
+          {STATIC_NAV.map(({ to, icon, label }) => (
             <NavLink
               key={to}
               to={to}
@@ -59,7 +53,7 @@ const AppLayout = () => {
             </NavLink>
           ))}
 
-          {/* Dynamic modules */}
+          {/* Dynamic module links */}
           {activeModules.length > 0 && (
             <>
               <button
@@ -69,11 +63,14 @@ const AppLayout = () => {
               >
                 <i className="ti ti-database" />
                 <span className="nav-text">My Modules</span>
-                <i className={`ti ${modulesOpen ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: 12, marginLeft:56 }} />
+                <i
+                  className={`ti ${modulesOpen ? 'ti-chevron-up' : 'ti-chevron-down'}`}
+                  style={{ fontSize: 12, marginLeft: 56 }}
+                />
               </button>
               {modulesOpen && activeModules.map((mod) => {
-                const dataPath   = `/${mod.moduleSlug}`;
-                const isActive   = location.pathname.startsWith(dataPath);
+                const dataPath = `/${mod.moduleSlug}`;
+                const isActive = location.pathname.startsWith(dataPath);
                 return (
                   <NavLink
                     key={mod._id}
@@ -105,14 +102,14 @@ const AppLayout = () => {
 
       {/* ── Topbar ── */}
       <nav className={`topbar${collapsed ? ' full' : ''}`}>
-        {/* Desktop toggle */}
+        {/* Desktop collapse toggle */}
         <button
           onClick={() => setCollapsed((v) => !v)}
           className="btn btn-light btn-icon btn-sm d-none d-lg-inline-flex me-2"
         >
           <i className="ti ti-layout-sidebar-left-expand" />
         </button>
-        {/* Mobile toggle */}
+        {/* Mobile sidebar toggle */}
         <button
           onClick={() => setMobileOpen((v) => !v)}
           className="btn btn-light btn-icon btn-sm d-lg-none me-2"
@@ -120,12 +117,10 @@ const AppLayout = () => {
           <i className="ti ti-layout-sidebar-left-expand" />
         </button>
 
-        {/* Spacer */}
         <div className="flex-grow-1" />
 
-        {/* Actions */}
         <div className="d-flex align-items-center gap-2">
-          {/* Bell */}
+          {/* Notifications */}
           <div className="dropdown">
             <a
               href="#"
@@ -134,16 +129,16 @@ const AppLayout = () => {
               onClick={(e) => e.preventDefault()}
             >
               <i className="ti ti-bell" style={{ fontSize: 18 }} />
-              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger mt-2 ms-n2" style={{ fontSize: 9 }}>
-                2
-              </span>
+              <span
+                className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger mt-2 ms-n2"
+                style={{ fontSize: 9 }}
+              >2</span>
             </a>
           </div>
 
           {/* User avatar */}
           <div
-            className="avatar-sm rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
-            style={{ background: 'var(--primary)', cursor: 'pointer', fontSize: 13 }}
+            className="user-avatar avatar-sm"
             onClick={() => navigate('/profile')}
             title="Profile"
           >
