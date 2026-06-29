@@ -44,7 +44,7 @@ const PasswordBar = ({ password }) => {
         {results.map((c) => (
           <span key={c.label} className={`pw-check ${c.ok ? 'text-success' : ''}`}
             style={{ fontSize: 11, color: c.ok ? '#86efac' : 'rgba(255,255,255,.35)' }}>
-            <i className={`ti ${c.ok ? 'ti-check' : 'ti-x'}`} className="fs-10px" /> {c.label}
+            <i className={`ti fs-10px ${c.ok ? 'ti-check' : 'ti-x'}`}/> {c.label}
           </span>
         ))}
       </div>

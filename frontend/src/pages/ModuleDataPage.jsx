@@ -59,7 +59,7 @@ const CellValue = ({ value, field }) => {
       );
     }
     return (
-      <span className={`badge rounded-pill ${value ? 'text-bg-success' : 'text-bg-secondary'}`} className="fs-10px">
+      <span className={`badge rounded-pill fs-10px ${value ? 'text-bg-success' : 'text-bg-secondary'}`}>
         {value ? 'Yes' : 'No'}
       </span>
     );

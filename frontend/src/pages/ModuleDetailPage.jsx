@@ -199,7 +199,7 @@ const ModuleDetailPage = () => {
             <div key={s.label} className="col-6 col-sm-3 border-end">
               <div className="info-stat">
                 <div className="info-stat__icon">
-                  <i className={`ti ${s.icon}`} className="fs-14px" />
+                  <i className={`ti ${s.icon} fs-14px`}/>
                 </div>
                 <div>
                   <p className="info-stat__label">{s.label}</p>
