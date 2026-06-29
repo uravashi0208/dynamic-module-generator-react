@@ -8,13 +8,14 @@ const ModulesPage = () => {
   const navigate = useNavigate();
   const {
     modules, pagination, isLoading, filters,
-    fetchModules, deleteModule, toggleStatus, setFilters, setPage,
+    fetchModules, deleteModule, toggleStatus, setFilters, setPage, downloadModule,
   } = useModuleStore();
 
   const [searchInput,  setSearchInput]  = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting,   setIsDeleting]   = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
+  const [downloadingId, setDownloadingId] = useState(null);
 
   useEffect(() => { fetchModules(); }, []);
 
@@ -37,6 +38,15 @@ const ModulesPage = () => {
     } finally {
       setIsDeleting(false);
       setDeleteTarget(null);
+    }
+  };
+
+  const handleDownload = async (module) => {
+    setDownloadingId(module._id);
+    try {
+      await downloadModule(module._id, module.moduleSlug);
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -198,6 +208,18 @@ const ModulesPage = () => {
                             title="Edit"
                           >
                             <i className="ti ti-edit fs-15px" />
+                          </button>
+                          <button
+                            onClick={() => handleDownload(module)}
+                            disabled={downloadingId === module._id}
+                            className="btn btn-light btn-icon btn-sm rounded-2"
+                            title="Download generated files (.zip)"
+                          >
+                            {downloadingId === module._id ? (
+                              <span className="spinner-border spinner-border-sm" />
+                            ) : (
+                              <i className="ti ti-download fs-15px" />
+                            )}
                           </button>
                           <button
                             onClick={() => setDeleteTarget(module)}

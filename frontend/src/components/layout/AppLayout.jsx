@@ -2,11 +2,23 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import useAuthStore from '../../context/authStore';
 import useModuleStore from '../../context/moduleStore';
+import api from '../../utils/api';
+import useVisitorTrack from '../../hooks/useVisitorTrack';
+
+// Paths we don't want to track (internal/system routes)
+const SKIP_TRACKING = new Set(['/dashboard', '/modules', '/profile', '/page-visits']);
+const shouldTrack = (path) => {
+  if (SKIP_TRACKING.has(path)) return false;
+  // skip module management pages: /modules/new, /modules/:id, /modules/:id/edit
+  if (path.startsWith('/modules/')) return false;
+  return true;
+};
 
 const STATIC_NAV = [
-  { to: '/dashboard', icon: 'ti-home',       label: 'Dashboard' },
-  { to: '/modules',   icon: 'ti-box-seam',   label: 'Modules' },
-  { to: '/profile',   icon: 'ti-user-circle', label: 'Profile' },
+  { to: '/dashboard', icon: 'ti-home',        label: 'Dashboard' },
+  { to: '/modules',   icon: 'ti-box-seam',    label: 'Modules'   },
+  { to: '/visitors',  icon: 'ti-users',       label: 'Visitors'  },
+  { to: '/profile',   icon: 'ti-user-circle', label: 'Profile'   },
 ];
 
 const AppLayout = () => {
@@ -18,7 +30,32 @@ const AppLayout = () => {
   const navigate                      = useNavigate();
   const location                      = useLocation();
 
+  useVisitorTrack(); // auto-tracks every visitor + page
+
   useEffect(() => { fetchModules(); }, []);
+
+  // ── Auto-track every page visit ──────────────────────────────────────────
+  const lastTracked = useRef('');
+  useEffect(() => {
+    const path = location.pathname;
+
+    // Skip duplicates (strict mode double-mount, etc.)
+    if (path === lastTracked.current) return;
+    if (!shouldTrack(path)) return;
+
+    lastTracked.current = path;
+
+    // Try to resolve a human-readable label from module slug
+    const slug = path.replace(/^\//, '').split('/')[0];
+    const matchedModule = modules.find((m) => m.moduleSlug === slug);
+    const label = matchedModule ? matchedModule.moduleName : undefined;
+
+    // Fire-and-forget — never block UI or show errors
+    api.post('/page-visits/track', {
+      path,
+      ...(label && { label }),
+    }).catch(() => {});
+  }, [location.pathname, modules]);
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
   const closeMobile  = () => setMobileOpen(false);

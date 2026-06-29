@@ -607,4 +607,4 @@ const deleteModulePages = (moduleName) => {
   }
 };
 
-module.exports = { generateModulePages, deleteModulePages };
+module.exports = { generateModulePages, deleteModulePages, makeListPage, makeFormPage };

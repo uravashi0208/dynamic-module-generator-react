@@ -169,6 +169,24 @@ const useModuleStore = create((set, get) => ({
     } catch (_) {}
   },
 
+  downloadModule: async (id, moduleSlug) => {
+    try {
+      const { data } = await api.get(`/modules/${id}/download`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${moduleSlug || 'module'}-files.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      return { success: true };
+    } catch (error) {
+      toast.error('Failed to download module files.');
+      return { success: false };
+    }
+  },
+
   clearCurrentModule: () => set({ currentModule: null }),
 }));
 

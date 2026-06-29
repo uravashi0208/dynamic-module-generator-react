@@ -1,6 +1,6 @@
 /**
- * TesssassaListPage.jsx  —  AUTO-GENERATED (2026-06-28T19:25:23.295Z)
- * Module: tesssassa  |  Slug: tesssassa
+ * TrtrListPage.jsx  —  AUTO-GENERATED (2026-06-28T19:36:06.148Z)
+ * Module: trtr  |  Slug: trtr
  * Safe to edit — regenerated only when module is deleted + recreated.
  */
 import { useEffect, useState, useRef } from 'react';
@@ -13,8 +13,8 @@ import {
 import useModuleDataStore from '../../context/moduleDataStore';
 import clsx from 'clsx';
 
-const MODULE_SLUG = 'tesssassa';
-const MODULE_NAME = 'tesssassa';
+const MODULE_SLUG = 'trtr';
+const MODULE_NAME = 'trtr';
 
 const CellValue = ({ value, fieldType }) => {
   if (value === null || value === undefined || value === '')
@@ -97,7 +97,7 @@ const ActionMenu = ({ onEdit, onDelete }) => {
   );
 };
 
-const TesssassaListPage = () => {
+const TrtrListPage = () => {
   const navigate = useNavigate();
   const { records, pagination, isLoading, fetchRecords, deleteRecord } = useModuleDataStore();
   const [page, setPage]     = useState(1);
@@ -185,7 +185,7 @@ const TesssassaListPage = () => {
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors shadow-sm">
               <Download className="w-4 h-4" /> Export
             </button>
-            <button onClick={() => navigate('/tesssassa/new')}
+            <button onClick={() => navigate('/trtr/new')}
               className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors shadow-sm">
               <Plus className="w-4 h-4" /> Add {MODULE_NAME}
             </button>
@@ -215,7 +215,7 @@ const TesssassaListPage = () => {
             <Database className="w-10 h-10 text-slate-200 mx-auto mb-3" />
             <p className="text-sm font-semibold text-slate-500">{search ? 'No records match your search.' : 'No records yet.'}</p>
             {!search && (
-              <button onClick={() => navigate('/tesssassa/new')}
+              <button onClick={() => navigate('/trtr/new')}
                 className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg mx-auto transition-colors">
                 <Plus className="w-4 h-4" /> Add {MODULE_NAME}
               </button>
@@ -232,55 +232,10 @@ const TesssassaListPage = () => {
                   </th>
               <th
                 className="px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap"
-                onClick={() => handleSort('test1')}
+                onClick={() => handleSort('name')}
               >
                 <div className="flex items-center gap-1">
-                  test1
-                  <ChevronsUpDown className="w-3 h-3 text-slate-400" />
-                </div>
-              </th>
-              <th
-                className="px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap"
-                onClick={() => handleSort('test2')}
-              >
-                <div className="flex items-center gap-1">
-                  test2
-                  <ChevronsUpDown className="w-3 h-3 text-slate-400" />
-                </div>
-              </th>
-              <th
-                className="px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap"
-                onClick={() => handleSort('email')}
-              >
-                <div className="flex items-center gap-1">
-                  email
-                  <ChevronsUpDown className="w-3 h-3 text-slate-400" />
-                </div>
-              </th>
-              <th
-                className="px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap"
-                onClick={() => handleSort('password')}
-              >
-                <div className="flex items-center gap-1">
-                  password
-                  <ChevronsUpDown className="w-3 h-3 text-slate-400" />
-                </div>
-              </th>
-              <th
-                className="px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap"
-                onClick={() => handleSort('gender')}
-              >
-                <div className="flex items-center gap-1">
-                  gender
-                  <ChevronsUpDown className="w-3 h-3 text-slate-400" />
-                </div>
-              </th>
-              <th
-                className="px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide cursor-pointer select-none whitespace-nowrap"
-                onClick={() => handleSort('hobby')}
-              >
-                <div className="flex items-center gap-1">
-                  hobby
+                  Name
                   <ChevronsUpDown className="w-3 h-3 text-slate-400" />
                 </div>
               </th>
@@ -297,30 +252,15 @@ const TesssassaListPage = () => {
                         className="w-4 h-4 accent-indigo-600 rounded cursor-pointer" />
                     </td>
                     <td className="px-4 py-4">
-                      <CellValue value={record.test1} fieldType="text" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <CellValue value={record.test2} fieldType="text" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <CellValue value={record.email} fieldType="text" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <CellValue value={record.password} fieldType="text" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <CellValue value={record.gender} fieldType="radio" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <CellValue value={record.hobby} fieldType="checkbox" />
+                      <CellValue value={record.name} fieldType="text" />
                     </td>
                     <td className="px-4 py-4 text-right text-sm text-slate-500 whitespace-nowrap">
                       {record.createdAt ? new Date(record.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                     </td>
                     <td className="px-4 py-4">
                       <ActionMenu
-                        onEdit={() => navigate('/tesssassa/' + record._id + '/edit')}
-                        onDelete={() => handleDelete(record._id, record.test1)}
+                        onEdit={() => navigate('/trtr/' + record._id + '/edit')}
+                        onDelete={() => handleDelete(record._id, record.name)}
                       />
                     </td>
                   </tr>
@@ -369,4 +309,4 @@ const TesssassaListPage = () => {
   );
 };
 
-export default TesssassaListPage;
+export default TrtrListPage;

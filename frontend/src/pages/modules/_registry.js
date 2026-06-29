@@ -16,6 +16,8 @@ import TesssassaListPage from './TesssassaListPage';
 import TesssassaFormPage from './TesssassaFormPage';
 import Test5ListPage from './Test5ListPage';
 import Test5FormPage from './Test5FormPage';
+import TrtrListPage from './TrtrListPage';
+import TrtrFormPage from './TrtrFormPage';
 // [MODULES_END]
 
 const registry = [
@@ -25,5 +27,6 @@ const registry = [
   { slug: 'date-time-form', ListPage: DateTimeFormListPage, FormPage: DateTimeFormFormPage },
   { slug: 'tesssassa', ListPage: TesssassaListPage, FormPage: TesssassaFormPage },
   { slug: 'test5', ListPage: Test5ListPage, FormPage: Test5FormPage },
+  { slug: 'trtr', ListPage: TrtrListPage, FormPage: TrtrFormPage },
 ];
 export default registry;

@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 const path     = require('path');
 const fs       = require('fs');
+const archiver = require('archiver');
 const Module   = require('../models/Module');
 const logger   = require('../config/logger');
 const { AppError } = require('../middleware/errorHandler');
-const { generateModulePages, deleteModulePages } = require('../utils/feFileGenerator');
+const { generateModulePages, deleteModulePages, makeListPage, makeFormPage } = require('../utils/feFileGenerator');
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -722,7 +723,54 @@ const getStats = async (req, res, next) => {
   }
 };
 
+// ─── Download generated files (controller/model/route + list/form pages) as ZIP ──
+const downloadModuleFiles = async (req, res, next) => {
+  const reqId = `[downloadModuleFiles][${req.params.id}]`;
+  logger.info(`${reqId} ▶ REQUEST RECEIVED — user: ${req.user?.email}`);
+  try {
+    const module = await Module.findById(req.params.id).lean();
+    if (!module) {
+      logger.warn(`${reqId} ❌ Module not found`);
+      return next(new AppError('Module not found.', 404));
+    }
+
+    const { moduleName, moduleSlug, fields = [] } = module;
+    const ModelName = toPascalCase(moduleName);
+
+    // Re-generate file contents on the fly (works in production too,
+    // where files aren't persisted to disk).
+    const modelContent      = makeModelContent(moduleName, moduleSlug, fields);
+    const controllerContent = makeControllerContent(moduleName, moduleSlug);
+    const routesContent     = makeRoutesContent(moduleName, moduleSlug);
+    const listPageContent   = makeListPage(moduleName, moduleSlug, fields);
+    const formPageContent   = makeFormPage(moduleName, moduleSlug, fields);
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${moduleSlug}-files.zip"`);
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.on('error', (err) => {
+      logger.error(`${reqId} ❌ Archive error: ${err.message}`, { stack: err.stack });
+      if (!res.headersSent) next(err);
+    });
+    archive.pipe(res);
+
+    archive.append(modelContent,      { name: `backend/models/${ModelName}.js` });
+    archive.append(controllerContent, { name: `backend/controllers/${ModelName}Controller.js` });
+    archive.append(routesContent,     { name: `backend/routes/${ModelName}Routes.js` });
+    archive.append(listPageContent,   { name: `frontend/pages/modules/${ModelName}ListPage.jsx` });
+    archive.append(formPageContent,   { name: `frontend/pages/modules/${ModelName}FormPage.jsx` });
+
+    await archive.finalize();
+    logger.info(`${reqId} ✅ ZIP streamed for module "${moduleName}"`);
+  } catch (err) {
+    logger.error(`${reqId} ❌ FATAL: ${err.message}`, { stack: err.stack });
+    next(err);
+  }
+};
+
 module.exports = {
   getModules, getModule, createModule, updateModule,
   deleteModule, toggleStatus, addField, removeField, getStats,
+  downloadModuleFiles,
 };

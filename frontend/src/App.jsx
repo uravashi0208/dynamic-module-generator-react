@@ -15,6 +15,8 @@ import ProfilePage       from './pages/ProfilePage';
 import NotFoundPage      from './pages/NotFoundPage';
 import ModuleDataPage    from './pages/ModuleDataPage';
 import ModuleDataFormPage from './pages/ModuleDataFormPage';
+import PageVisitsPage    from './pages/PageVisitsPage';
+import VisitorsPage      from './pages/VisitorsPage';
 
 const App = () => (
   <BrowserRouter>
@@ -50,6 +52,8 @@ const App = () => (
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/dashboard"        element={<DashboardPage />} />
+          <Route path="/page-visits"      element={<PageVisitsPage />} />
+          <Route path="/visitors"         element={<VisitorsPage />} />
           <Route path="/modules"          element={<ModulesPage />} />
           <Route path="/modules/new"      element={<ModuleFormPage />} />
           <Route path="/modules/:id"      element={<ModuleDetailPage />} />

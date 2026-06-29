@@ -13,6 +13,8 @@ const ensureIndexes     = require('./config/ensureIndexes');
 const logger            = require('./config/logger');
 const authRoutes        = require('./routes/authRoutes');
 const moduleRoutes      = require('./routes/moduleRoutes');
+const pageVisitRoutes   = require('./routes/pageVisitRoutes');
+const visitorRoutes     = require('./routes/visitorRoutes');
 const dynamicDataRouter = require('./routes/dynamicDataRouter');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
@@ -72,8 +74,10 @@ app.use('/uploads', express.static(uploadsDir));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 // Order matters: specific paths first, wildcard last.
-app.use('/api/auth',    authLimiter, authRoutes);
-app.use('/api/modules', apiLimiter,  moduleRoutes);
+app.use('/api/auth',         authLimiter, authRoutes);
+app.use('/api/modules',      apiLimiter,  moduleRoutes);
+app.use('/api/page-visits',  apiLimiter,  pageVisitRoutes);
+app.use('/api/visitors',     apiLimiter,  visitorRoutes);
 
 // Dynamic data router — catches /api/:moduleSlug and /api/:moduleSlug/:id
 // All module CRUD is handled here without any per-module route files.

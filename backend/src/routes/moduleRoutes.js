@@ -5,6 +5,7 @@ const router  = express.Router();
 const {
   getModules, getModule, createModule, updateModule,
   deleteModule, toggleStatus, addField, removeField, getStats,
+  downloadModuleFiles,
 } = require('../controllers/moduleController');
 
 const { authenticate } = require('../middleware/auth');
@@ -73,6 +74,7 @@ router.post('/',             moduleValidation, validate, createModule);
 router.put('/:id',           moduleValidation, validate, updateModule);
 router.delete('/:id',        deleteModule);
 router.patch('/:id/toggle-status', toggleStatus);
+router.get('/:id/download',  downloadModuleFiles);
 
 // Fields
 router.post('/:id/fields', [
